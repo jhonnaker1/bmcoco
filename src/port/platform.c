@@ -40,6 +40,7 @@
 #include "joystick.h"
 #include "logging.h"
 #include "machine.h"
+#include "slist.h"
 #include "module.h"
 #include "part.h"
 #include "romlist.h"
@@ -201,6 +202,82 @@ static void track_machine_rate(void)
 
 static double last_present;
 
+/* ---- Load ------------------------------------------------------------------ */
+
+static void reset_pacing(void);
+
+/* How long each frame takes to emulate and draw, against the display's
+   refresh. Locked to the display, a frame that takes longer than one
+   refresh waits for the next, which would halve the speed (and starve the
+   sound) on a Pi too slow for what it's asked: then BMCoco stops waiting
+   for the display and paces by the clock instead, as fast as the Pi can,
+   until frames fit again. */
+static double frame_start;        /* when the last present returned */
+static double paced_sleep;        /* time spent sleeping in pace() since */
+static double load_avg;           /* smoothed frame time / refresh period */
+static int overloaded;
+static double stats_start, stats_sum, stats_max;
+static unsigned stats_frames, stats_late;
+
+static int display_paces(void)
+{
+	return vsync_lock && !overloaded;
+}
+
+int bmcoco_overloaded(void)
+{
+	return overloaded;
+}
+
+void bmcoco_load(int *average, int *maximum)
+{
+	*average = (int) (load_avg * 100.0 + 0.5);
+	*maximum = (int) (stats_max * 100.0 + 0.5);
+}
+
+static void measure_load(double now)
+{
+	double period = 1.0 / refresh_rate;
+	double work = now - frame_start - paced_sleep;
+	double load;
+	paced_sleep = 0.0;
+	if (frame_start == 0.0 || work < 0.0 || work > 0.25)
+		return;  /* the first frame, or after the menu or a pause */
+	load = work / period;
+	load_avg += (load - load_avg) * 0.05;
+	stats_sum += load;
+	if (load > stats_max)
+		stats_max = load;
+	stats_frames++;
+	if (load > 1.0)
+		stats_late++;
+
+	if (vsync_lock && !overloaded && load_avg > 0.97) {
+		overloaded = TRUE;
+		reset_pacing();
+		LOG_PRINT("BMCoco: frames take %.1f ms, longer than the display's %.1f ms: "
+		          "timer paced until they fit\n", load_avg * period * 1000.0,
+		          period * 1000.0);
+	} else if (overloaded && (!vsync_lock || load_avg < 0.85)) {
+		overloaded = FALSE;
+		LOG_PRINT("BMCoco: frames fit the display again (%.1f ms), synchronised to it\n",
+		          load_avg * period * 1000.0);
+	}
+
+	/* Every 30 seconds in the log: how busy the Pi is. */
+	if (stats_start == 0.0)
+		stats_start = now;
+	if (now - stats_start >= 30.0 && stats_frames > 0) {
+		LOG_PRINT("BMCoco: load %.0f%% of a frame on average, %.0f%% at most, "
+		          "%u of %u frames late%s\n", stats_sum * 100.0 / stats_frames,
+		          stats_max * 100.0, stats_late, stats_frames,
+		          overloaded ? " (timer paced)" : "");
+		stats_start = now;
+		stats_sum = stats_max = 0.0;
+		stats_frames = stats_late = 0;
+	}
+}
+
 static void bm_draw(void *sptr)
 {
 	double now;
@@ -217,8 +294,11 @@ static void bm_draw(void *sptr)
 			return;
 		}
 		host_video_present(FALSE);
+		frame_start = 0.0;
 	} else {
-		host_video_present(vsync_lock);
+		measure_load(now);
+		host_video_present(display_paces());
+		frame_start = host_time();
 	}
 	last_present = now;
 }
@@ -238,6 +318,9 @@ static void bm_set_viewport(void *sptr, int w, int h)
 	vp_h = h;
 	vo_render_set_viewport(bm_vo->renderer, vp_w, shown_height());
 	bm_vo->renderer->buffer_pitch = fb_pitch_px;
+	/* The mouse pointer is in the picture's pixels (process_mouse()):
+	   XRoar's mouse joystick (mjoy0) measures it against this. */
+	bm_vo->picture_area = (struct vo_picture_area){0, 0, vp_w, shown_height()};
 	clear_framebuffer();
 	apply_view();
 }
@@ -358,7 +441,7 @@ static void feed_silence(void)
    NTSC CoCo and a 60 Hz display. */
 static void play_fragment(const int16_t *samples, unsigned n)
 {
-	static int16_t buf[AO_FRAGMENT + 1];
+	static int16_t buf[AO_FRAGMENT * 2 + 1];
 	unsigned free_frames, used;
 	if (ao_rate == 0)
 		return;
@@ -373,12 +456,27 @@ static void play_fragment(const int16_t *samples, unsigned n)
 			host_sound_write(samples, n);
 		return;
 	}
-	if (used < ao_latency / 4 && n < AO_FRAGMENT + 1) {
-		/* Running dry: one sample more. */
-		memcpy(buf, samples, n * sizeof(*samples));
-		buf[n] = samples[n - 1];
+	if (used < ao_latency / 4 && n > 0 && n <= AO_FRAGMENT) {
+		/* Running dry: one sample more, or, the emptier it is (the
+		   emulation slower than real time: a Pi too slow for it), the
+		   fragment stretched to up to twice its length, lower in
+		   pitch, rather than gaps. */
+		unsigned quarter = ao_latency / 4;
+		unsigned want = n + 1 + n * (quarter - used) / quarter;
+		unsigned i;
+		if (want > AO_FRAGMENT * 2 + 1)
+			want = AO_FRAGMENT * 2 + 1;
+		for (i = 0; i < want; i++) {
+			/* Linear interpolation, in 16.16 fixed point. */
+			uint32_t pos = (uint32_t) (((uint64_t) i * (n - 1) << 16) / (want - 1));
+			unsigned j = pos >> 16;
+			int frac = (int) (pos & 0xffff);
+			int a = samples[j];
+			int b = j + 1 < n ? samples[j + 1] : a;
+			buf[i] = (int16_t) (a + (((b - a) * frac) >> 16));
+		}
 		samples = buf;
-		n++;
+		n = want;
 		ao_corrections++;
 	} else if (used > (ao_latency * 3) / 4 && n > 1) {
 		/* Getting full: one sample less. */
@@ -457,6 +555,25 @@ static void ui_free(void *sptr)
 	free(sptr);
 }
 
+/* RAM sizes chosen in the menu (ram_NAME=K, one per machine), onto the
+   machines XRoar has set up from xroar.conf, before it makes one. */
+static void apply_ram_settings(void)
+{
+	struct slist *l;
+	for (l = machine_config_list(); l != NULL; l = l->next) {
+		struct machine_config *mc = l->data;
+		char key[64];
+		int k;
+		snprintf(key, sizeof key, "ram_%s", mc->name);
+		k = host_option_int(key, 0);
+		if (k > 0) {
+			mc->ram = k;
+			if (mc->architecture == NULL || strcmp(mc->architecture, "coco3") != 0)
+				mc->ram_org = ANY_AUTO;
+		}
+	}
+}
+
 static void *ui_new(void *cfg)
 {
 	struct ui_interface *ui = xmalloc(sizeof(*ui));
@@ -467,6 +584,7 @@ static void *ui_new(void *cfg)
 	/* XRoar's host keyboard tables (each front end sets them up). */
 	hk_init();
 	bmcoco_menu_attach();
+	apply_ram_settings();
 	return ui;
 }
 
@@ -714,7 +832,7 @@ static void pace(void)
 	paced_emulated += (double) (event_ticks) (event_current_tick - paced_last_tick)
 	                  / (double) EVENT_TICK_RATE;
 	paced_last_tick = event_current_tick;
-	if (vsync_lock || turbo) {
+	if (display_paces() || turbo) {
 		/* The display does the pacing (or nothing does). */
 		paced_emulated = 0.0;
 		paced_start = host_time();
@@ -723,6 +841,7 @@ static void pace(void)
 	ahead = paced_emulated - (host_time() - paced_start);
 	if (ahead > 0.001) {
 		host_sleep_us((unsigned) (ahead * 1000000.0));
+		paced_sleep += ahead;
 	} else if (ahead < -0.25) {
 		/* Fell well behind (loading, a slow moment): don't race to
 		   catch up. */
@@ -743,9 +862,46 @@ void bmcoco_set_turbo(int on)
 static int open_menu;
 static int pad_last_menu[HOST_PADS];
 
+/* A USB mouse moves a pointer over the picture, which XRoar's Mouse
+   joystick (mjoy0, plugged into a port in the menu's Joysticks page) reads
+   as a position, as the CoCo's own mouse and the Hi-Res joystick do. One
+   step of the mouse is a pixel across, half a line down (the CoCo's lines
+   are drawn twice as tall as its pixels are wide); mouse_speed= (percent)
+   in cmdline.txt changes both. */
+static double mouse_x = -1.0, mouse_y = -1.0;
+
+static void process_mouse(void)
+{
+	int dx, dy, buttons;
+	double speed;
+	if (!host_mouse_read(&dx, &dy, &buttons) || bm_vo == NULL)
+		return;
+	if (mouse_x < 0.0) {
+		mouse_x = vp_w / 2.0;
+		mouse_y = shown_height() / 2.0;
+	}
+	speed = host_option_int("mouse_speed", 100) / 100.0;
+	mouse_x += dx * speed;
+	mouse_y += dy * speed * 0.5;
+	if (mouse_x < 0.0)
+		mouse_x = 0.0;
+	if (mouse_x > vp_w - 1)
+		mouse_x = vp_w - 1;
+	if (mouse_y < 0.0)
+		mouse_y = 0.0;
+	if (mouse_y > shown_height() - 1)
+		mouse_y = shown_height() - 1;
+	bm_vo->mouse.axis[0] = (int) mouse_x;
+	bm_vo->mouse.axis[1] = (int) mouse_y;
+	bm_vo->mouse.button[0] = (buttons & 1) != 0;
+	bm_vo->mouse.button[1] = (buttons & 2) != 0;
+	bm_vo->mouse.button[2] = (buttons & 4) != 0;
+}
+
 static void process_input(void)
 {
 	int usage, pressed, pad;
+	process_mouse();
 	while (host_key_event(&usage, &pressed)) {
 		/* The power key: Shut Down. The Pi 400's keyboard sends it for
 		   Fn+F10 while the Pi is running (Raspberry Pi, "Have you tried
@@ -834,6 +990,51 @@ static int build_args(char **argv, int max)
 		argv[argc++] = (char *) value;
 	}
 
+	/* The Color Computer Archive's CP-400 Extended BASIC is
+	   cp400extbas.rom; XRoar looks for cp400ext.rom. */
+	argv[argc++] = "-romlist";
+	argv[argc++] = "cp400ext=cp400ext,cp400extbas";
+
+	/* Hard disk images chosen in the menu, and the cartridge they were
+	   used with (an IDE interface). Copied: argv outlives the lookups. */
+	{
+		static char hd_cart[64], hd[2][512];
+		static const char *const hd_keys[2] = {"hd0", "hd1"};
+		static const char *const hd_args[2] = {"-load-hd0", "-load-hd1"};
+		int d, any = FALSE;
+		snprintf(hd_cart, sizeof hd_cart, "%s", host_option("hd_cart", ""));
+		for (d = 0; d < 2; d++) {
+			snprintf(hd[d], sizeof hd[d], "%s", host_option(hd_keys[d], ""));
+			any |= hd[d][0] != '\0';
+		}
+		if (hd_cart[0] != '\0' && any) {
+			argv[argc++] = "-cart";
+			argv[argc++] = hd_cart;
+			for (d = 0; d < 2; d++) {
+				if (hd[d][0] != '\0') {
+					argv[argc++] = (char *) hd_args[d];
+					argv[argc++] = hd[d];
+				}
+			}
+		}
+	}
+
+	/* The Becker port's DriveWire server (src/port/becker.c). Copied:
+	   argv outlives the lookups. */
+	{
+		static char becker_ip[64], becker_port[16];
+		snprintf(becker_ip, sizeof becker_ip, "%s", host_option("becker_ip", ""));
+		snprintf(becker_port, sizeof becker_port, "%s", host_option("becker_port", ""));
+		if (becker_ip[0] != '\0') {
+			argv[argc++] = "-becker-ip";
+			argv[argc++] = becker_ip;
+		}
+		if (becker_port[0] != '\0') {
+			argv[argc++] = "-becker-port";
+			argv[argc++] = becker_port;
+		}
+	}
+
 	/* Keyboard layout for "typed characters" mode and the menus. */
 	value = host_option("keyboard", "us");
 	argv[argc++] = "-kbd-lang";
@@ -904,7 +1105,7 @@ static void fatal(const char *text)
 
 void bmcoco_main(void)
 {
-	static char *argv[40];
+	static char *argv[64];
 	int argc, pitch;
 	double last_second;
 
@@ -919,7 +1120,7 @@ void bmcoco_main(void)
 	measure_refresh_rate();
 	open_sound();
 
-	argc = build_args(argv, 38);
+	argc = build_args(argv, 62);
 	ui_module_list = bmcoco_ui_module_list;
 	if (xroar_init(argc, argv) == NULL)
 		fatal("XRoar did not start. The log (see the User Guide) says why.");

@@ -14,11 +14,16 @@
  *   <frame> pad <n> <bits>         set gamepad n to HOST_PAD_* bits
  *   <frame> axis <n> <x> <y>       gamepad n's analog stick (0-65535, -1 none)
  *   <frame> gpio <port> <bits>     GPIO joystick port to HOST_JOY_* bits
+ *   <frame> mouse <dx> <dy> <buttons>  the mouse moves (buttons: bit 0 left)
  *   <frame> shot <file.ppm>        save the visible screen
  *   <frame> audio                  print audio statistics
  *   <frame> webui <reboot|coldstart>  a request from the web UI
  *   <frame> run <path>             the web UI starts a file
  *   <frame> quit                   end the test
+ *
+ * BMCOCO_SIM_FRAME_MS=N makes each frame's emulation take N ms of the
+ * virtual time, as on a computer too slow for it (a Pi 3 with the most
+ * accurate artifact colours, say).
  *
  * With BMCOCO_LIVE=PORT it runs in real time instead, with no script: the
  * screen, keyboard, gamepads and sound are in a web page at
@@ -91,6 +96,24 @@ int host_options_save(void)
 	return fclose(f) == 0;
 }
 
+/* ./bmcoco.cfg from an earlier run, as the Pi reads it at boot. */
+static void load_settings(void)
+{
+	char line[160];
+	FILE *f = fopen("bmcoco.cfg", "r");
+	if (f == NULL)
+		return;
+	while (fgets(line, sizeof(line), f) != NULL) {
+		char *eq = strchr(line, '=');
+		line[strcspn(line, "\r\n")] = '\0';
+		if (eq != NULL && line[0] != '#') {
+			*eq = '\0';
+			host_option_set(line, eq + 1);
+		}
+	}
+	fclose(f);
+}
+
 const char *host_option(const char *name, const char *default_value)
 {
 	const char *v = option(name);
@@ -124,6 +147,7 @@ double host_option_double(const char *name, double default_value)
 static double now = 0.0;
 static double refresh = 60.0;
 static double refresh_later = 0.0;  /* refresh rate after start up */
+static double frame_work = 0.0;     /* seconds each frame's emulation takes */
 static long frame = 0;
 static long presents = 0;
 
@@ -144,11 +168,20 @@ static double real_time(void)
 	return t - start;
 }
 
+/* A slow computer (BMCOCO_SIM_FRAME_MS): the next frame's emulation, due
+   once a frame has been shown, after start up (where BMCoco times the
+   display). The first look at the clock after that sees it before. */
+static double work_due;
+
 double host_time(void)
 {
+	double t;
 	if (live)
 		now = real_time();
-	return now;
+	t = now;
+	now += work_due;
+	work_due = 0.0;
+	return t;
 }
 
 void host_sleep_us(unsigned us)
@@ -222,6 +255,7 @@ unsigned host_sound_free_frames(void)
 
 void host_sound_write(const int16_t *samples, unsigned frames)
 {
+
 	unsigned i;
 	sound_advance();
 	if (live)
@@ -334,6 +368,28 @@ int host_pad_axis(int pad, int axis)
 
 int host_gpio_joystick(int port) { return port >= 0 && port < 2 ? gpio[port] : 0; }
 
+static int mouse_dx, mouse_dy, mouse_buttons, mouse_seen;
+
+int host_mouse_read(int *dx, int *dy, int *buttons)
+{
+	if (!mouse_seen)
+		return 0;
+	*dx = mouse_dx;
+	*dy = mouse_dy;
+	*buttons = mouse_buttons;
+	mouse_dx = mouse_dy = 0;
+	return 1;
+}
+
+/* For live.c, and the script's mouse command. */
+void sim_mouse(int dx, int dy, int buttons)
+{
+	mouse_dx += dx;
+	mouse_dy += dy;
+	mouse_buttons = buttons;
+	mouse_seen = 1;
+}
+
 /* US layout: character to (usage, shift). */
 static int char_usage(int c, int *shift)
 {
@@ -443,6 +499,10 @@ static void run_script(void)
 			sscanf(line + n, "%d %d %d", &pad, &x, &y);
 			pad_axes[pad][0] = x;
 			pad_axes[pad][1] = y;
+		} else if (strcmp(cmd, "mouse") == 0) {
+			int dx, dy, b;
+			sscanf(line + n, "%d %d %d", &dx, &dy, &b);
+			sim_mouse(dx, dy, b);
 		} else if (strcmp(cmd, "gpio") == 0) {
 			int port, bits;
 			sscanf(line + n, "%d %i", &port, &bits);
@@ -513,6 +573,8 @@ void host_video_present(int wait_vsync)
 	} else {
 		now += 1e-4;
 	}
+	if (frame >= 30)
+		work_due = frame_work;
 	tick();
 }
 
@@ -638,9 +700,13 @@ int main(void)
 	r = getenv("BMCOCO_REFRESH");
 	if (r)
 		refresh = atof(r);
+	r = getenv("BMCOCO_SIM_FRAME_MS");
+	if (r != NULL)
+		frame_work = atof(r) / 1000.0;
 	r = getenv("BMCOCO_REFRESH_LATER");
 	if (r)
 		refresh_later = atof(r);
+	load_settings();
 	bmcoco_main();
 	return 0;
 }

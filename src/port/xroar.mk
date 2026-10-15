@@ -6,7 +6,7 @@
 # compiles with every machine and cartridge enabled (see config.h), minus
 # main_unix.c and the host specific front ends (SDL, GTK, X11, ALSA, ...):
 # BMCoco's user interface, video, sound and joysticks are in src/port/.
-# becker.c is replaced by src/port/becker_stub.c (see there).
+# becker.c is replaced by src/port/becker.c (see there).
 #
 # When updating XRoar, check its src/Makefile.am for added or removed files
 # (see docs/UPDATING.md).

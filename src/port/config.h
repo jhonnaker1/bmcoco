@@ -43,6 +43,9 @@
 #define WANT_PART_MC6883 1
 #define WANT_PART_TCC1014 1
 
+/* The Becker port (DriveWire over the network): src/port/becker.c. */
+#define WANT_BECKER 1
+
 /* The emulator's log messages go to BMCoco's log. */
 #define LOGGING 1
 

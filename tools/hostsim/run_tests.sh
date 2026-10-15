@@ -192,6 +192,30 @@ check_log powerkey "power off requested" "the power key powers off"
 run powerkeymenu 60 "$TESTROMS" "" '150 key 0x45 1\n152 key 0x45 0\n180 key 0x66 1\n182 key 0x66 0\n250 quit\n'
 check_log powerkeymenu "power off requested" "the power key in the menu powers off"
 
+echo "A Pi too slow for the frame lock"
+# Each frame takes 18 ms to emulate, a little over a 60 Hz refresh: locked
+# to the display that would be every other refresh (half speed, the sound
+# starved). BMCoco paces by the clock instead, and stretches the sound.
+(mkdir -p "$OUT/slow" && ln -s "$TESTROMS" "$OUT/slow/roms" && cd "$OUT/slow" && \
+    printf '2400 audio\n2401 quit\n' | BMCOCO_REFRESH=60 BMCOCO_SIM_FRAME_MS=18 \
+    BMCOCO_CMDLINE="root=." "$SIM" > log.txt 2>&1)
+check_log slow "longer than the display's .*timer paced until they fit" "falls back to timer pacing"
+check_log slow "BMCoco: load 10[0-9]% of a frame" "logs the load"
+line=$(grep "frames presented" "$OUT/slow/log.txt" | tail -1)
+frame=$(echo "$line" | sed 's/.*frame \([0-9]*\):.*/\1/')
+presented=$(echo "$line" | sed 's/.*: \([0-9]*\) frames presented/\1/')
+if [ -n "$frame" ] && [ $((presented * 100 / frame)) -ge 80 ]; then
+    pass "slow: runs at $((presented * 100 / frame))% speed (not 50%)"
+else
+    fail slow "speed: $line"
+fi
+underruns=$(grep -o 'underruns [0-9]*' "$OUT/slow/log.txt" | tail -1 | grep -o '[0-9]*')
+if [ "${underruns:-9999}" -lt 300 ]; then
+    pass "slow: the sound keeps going ($underruns underruns)"
+else
+    fail slow "$underruns sound underruns"
+fi
+
 echo "Web UI reboot request"
 run reboot 60 "$TESTROMS" "" '120 webui reboot\n200 quit\n'
 check_log reboot "reboot requested" "reboots"
@@ -202,6 +226,55 @@ if grep -q "^typed_keys=0" "$OUT/settings/bmcoco.cfg" 2>/dev/null; then
     pass "settings: Keyboard > Typed Characters saved to bmcoco.cfg"
 else
     fail settings "typed_keys=0 not in bmcoco.cfg"
+fi
+
+echo "Memory"
+# Menu, down six to Memory, up two from 64K to 16K: the machine is reset
+# with 16K, the choice saved, and used again at the next boot.
+run memory 60 "$TESTROMS" "" '120 key 0x45 1\n121 key 0x45 0\n128 key 0x51 1\n129 key 0x51 0\n130 key 0x51 1\n131 key 0x51 0\n132 key 0x51 1\n133 key 0x51 0\n134 key 0x51 1\n135 key 0x51 0\n136 key 0x51 1\n137 key 0x51 0\n138 key 0x51 1\n139 key 0x51 0\n150 key 0x28 1\n151 key 0x28 0\n160 key 0x52 1\n161 key 0x52 0\n162 key 0x52 1\n163 key 0x52 0\n170 key 0x28 1\n171 key 0x28 0\n300 quit\n'
+check_log memory "16K = 16K motherboard RAM" "the menu sets 16K"
+if grep -q "^ram_coco2bus=16" "$OUT/memory/bmcoco.cfg" 2>/dev/null; then
+    pass "memory: ram_coco2bus=16 saved to bmcoco.cfg"
+else
+    fail memory "ram_coco2bus=16 not in bmcoco.cfg"
+fi
+(cd "$OUT/memory" && printf '100 quit\n' | BMCOCO_REFRESH=60 BMCOCO_CMDLINE="root=." "$SIM" > log2.txt 2>&1)
+if tail -1 "$OUT/memory/log2.txt" >/dev/null && grep "motherboard RAM" "$OUT/memory/log2.txt" | tail -1 | grep -q "16K = 16K"; then
+    pass "memory: 16K again at the next boot"
+else
+    fail memory "the next boot didn't have 16K (see out/memory/log2.txt)"
+fi
+
+echo "Mouse"
+# The Mouse in the right port: the pointer to the top left, the bottom
+# right, then the left button.
+run mouse 60 "$TESTROMS" "joy_right=mjoy0" '100 mouse -2000 -2000 0\n130 shot tl.ppm\n140 mouse 4000 4000 0\n170 shot br.ppm\n180 mouse 0 0 1\n210 shot fire.ppm\n220 mouse -2000 -2000 0\n250 shot tl2.ppm\n251 quit\n'
+check_log mouse "port 0 = Mouse" "Mouse plugged into the right port"
+differ mouse tl br
+differ mouse br fire
+same mouse tl tl2
+
+echo "Hard disks"
+# A card with a stand-in HDB-DOS ROM and a blank hard disk image. Menu,
+# Hard Disks (down two), Drive 0, the disks folder, the image: the IDE
+# interface is plugged in with it, and both come back at the next boot.
+mkdir -p "$OUT/hd/disks" "$OUT/hdroms"
+cp "$TESTROMS"/* "$OUT/hdroms/"
+head -c 16384 /dev/zero > "$OUT/hdroms/hdblba.rom"
+head -c 1048576 /dev/zero > "$OUT/hd/disks/test.ide"
+run hd 60 "$OUT/hdroms" "" '120 key 0x45 1\n121 key 0x45 0\n130 key 0x51 1\n131 key 0x51 0\n132 key 0x51 1\n133 key 0x51 0\n140 key 0x28 1\n141 key 0x28 0\n160 key 0x28 1\n161 key 0x28 0\n170 key 0x28 1\n171 key 0x28 0\n180 key 0x28 1\n181 key 0x28 0\n300 quit\n'
+check_log hd "Glenside \| IDE interface" "the IDE interface is plugged in"
+check_log hd "FILE hdblba.rom" "with HDB-DOS"
+if grep -q "^hd0=.*disks/test.ide" "$OUT/hd/bmcoco.cfg" 2>/dev/null && grep -q "^hd_cart=ide" "$OUT/hd/bmcoco.cfg"; then
+    pass "hd: the image and the interface saved to bmcoco.cfg"
+else
+    fail hd "hd0 / hd_cart not in bmcoco.cfg"
+fi
+(cd "$OUT/hd" && printf '100 quit\n' | BMCOCO_REFRESH=60 BMCOCO_CMDLINE="root=." "$SIM" > log2.txt 2>&1)
+if grep -q "IDE interface" "$OUT/hd/log2.txt" && grep -q "test.ide" "$OUT/hd/log2.txt"; then
+    pass "hd: the next boot has them again"
+else
+    fail hd "the next boot didn't have the hard disk (see out/hd/log2.txt)"
 fi
 
 if [ -n "${BMCOCO_ROMS:-}" ]; then
@@ -216,6 +289,42 @@ if [ -n "${BMCOCO_ROMS:-}" ]; then
     run coco3 60 "$BMCOCO_ROMS" "machine=coco3" '300 shot boot.ppm\n301 quit\n'
     check_log coco3 "Super Extended Colour BASIC" "CoCo 3 ROM found"
     check_log coco3 "synchronised to the display" "CoCo 3 locked to 60 Hz"
+
+    echo "Becker port (real ROMs, a stand-in DriveWire server)"
+    # The IDE interface (a stand-in HDB-DOS: only its Becker port is used)
+    # in xroar.conf. BASIC writes A to the port's data register; the server
+    # answers Z, which BASIC then reads: status 2 (data waiting), then 90.
+    mkdir -p "$OUT/becker/roms"
+    for f in "$BMCOCO_ROMS"/*; do ln -s "$f" "$OUT/becker/roms/" 2>/dev/null; done
+    head -c 8192 /dev/zero > "$OUT/becker/roms/hdblba.rom"
+    printf 'machine coco2bus\nmachine-cart ide\n' > "$OUT/becker/xroar.conf"
+    python3 - "$OUT/becker/server.log" <<'EOF' &
+import socket, sys
+log = open(sys.argv[1], 'w')
+s = socket.socket()
+s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+s.bind(('127.0.0.1', 65511))
+s.listen(1)
+s.settimeout(30)
+c, _ = s.accept()
+c.settimeout(30)
+data = c.recv(16)
+log.write('got %s\n' % list(data))
+log.flush()
+c.sendall(b'Z')
+c.recv(16)
+EOF
+    server=$!
+    sleep 1
+    (cd "$OUT/becker" && printf '%s\n' '300 type POKE &HFF42,65\n' '500 type PRINT PEEK(&HFF41);PEEK(&HFF42)\n' '800 shot result.ppm' '801 quit' | \
+        BMCOCO_REFRESH=60 BMCOCO_IP=127.0.0.1 BMCOCO_CMDLINE="root=. becker_port=65511" "$SIM" > log.txt 2>&1)
+    wait $server 2>/dev/null
+    check_log becker "Becker port: connected to DriveWire server 127.0.0.1:65511" "connects to the server"
+    if grep -q "got \[65\]" "$OUT/becker/server.log" 2>/dev/null; then
+        pass "becker: the server got what BASIC wrote"
+    else
+        fail becker "the server didn't get A (see out/becker/server.log)"
+    fi
 fi
 
 echo

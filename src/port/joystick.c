@@ -29,6 +29,7 @@
 
 #include "hkbd.h"
 #include "joystick.h"
+#include "xroar.h"
 #include "logging.h"
 #include "module.h"
 
@@ -42,22 +43,33 @@
    quarter of its range). */
 #define STICK_THRESHOLD 8192
 
+/* Which gamepad each joystick reads, from the settings: looked up once
+   (the CoCo reads its joysticks thousands of times a frame), again when
+   the menu changes them. -2: not looked up yet. */
+static int joystick_pad[NUM_JOYSTICKS] = {-2, -2};
+
 int bmcoco_joystick_pad(int n)
 {
 	static const char *const names[NUM_JOYSTICKS] = {"joy1_pad", "joy2_pad"};
 	int pad;
 	if (n < 0 || n >= NUM_JOYSTICKS)
 		return -1;
-	/* 0 automatic (gamepad N for joystick N), 1-4 a gamepad, -1 none. */
-	pad = host_option_int(names[n], 0);
-	if (pad < 0 || pad > HOST_PADS)
-		return -1;
-	return pad == 0 ? n : pad - 1;
+	if (joystick_pad[n] == -2) {
+		/* 0 automatic (gamepad N for joystick N), 1-4 a gamepad, -1 none. */
+		pad = host_option_int(names[n], 0);
+		if (pad < 0 || pad > HOST_PADS)
+			joystick_pad[n] = -1;
+		else
+			joystick_pad[n] = pad == 0 ? n : pad - 1;
+	}
+	return joystick_pad[n];
 }
 
 void bmcoco_joystick_settings_changed(void)
 {
-	/* Settings are read each time a joystick is read. */
+	int n;
+	for (n = 0; n < NUM_JOYSTICKS; n++)
+		joystick_pad[n] = -2;
 }
 
 static int pad_state(int n)
@@ -201,12 +213,30 @@ static struct joystick_submodule bmcoco_js_physical = {
 	.configure_button = configure_button,
 };
 
+/* The USB mouse, for XRoar's Mouse joystick (mjoy0): XRoar reads the
+   pointer from the video output (platform.c moves it). */
+static struct joystick_control *configure_mouse_axis(char *spec, unsigned jaxis)
+{
+	return joystick_configure_mouse_axis(xroar.ui_interface, spec, jaxis);
+}
+
+static struct joystick_control *configure_mouse_button(char *spec, unsigned jbutton)
+{
+	return joystick_configure_mouse_button(xroar.ui_interface, spec, jbutton);
+}
+
+static struct joystick_submodule bmcoco_js_mouse = {
+	.name = "mouse",
+	.configure_axis = configure_mouse_axis,
+	.configure_button = configure_mouse_button,
+};
+
 static struct joystick_submodule *bmcoco_js_submodules[] = {
-	&bmcoco_js_physical, NULL
+	&bmcoco_js_physical, &bmcoco_js_mouse, NULL
 };
 
 struct joystick_module bmcoco_js_mod = {
-	.common = { .name = "bmcoco", .description = "Gamepads and GPIO joysticks" },
+	.common = { .name = "bmcoco", .description = "Gamepads, GPIO joysticks and the mouse" },
 	.submodule_list = bmcoco_js_submodules,
 };
 

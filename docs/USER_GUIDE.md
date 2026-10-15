@@ -33,7 +33,10 @@ own into `roms` (or the root of the card). XRoar finds them by name:
 | Disks (RS-DOS)     | `disk11.rom` (or `disk10.rom`)                  |
 | CoCo 3             | `coco3.rom`                                     |
 | MC-10              | `mc10.rom`                                      |
+| Prológica CP-400   | `cp400bas.rom` and `cp400ext.rom` (or `cp400extbas.rom`, the Color Computer Archive's name) |
 | Dragon 32 / 64     | `d32.rom` / `d64_1.rom`, `d64_2.rom`            |
+| Hard disks (IDE)   | `hdblba.rom` (HDB-DOS) or `yados.rom`, for the IDE interface (see Hard disks) |
+| Becker port DOS    | `hdbdw3bck.rom` (HDB-DOS for DriveWire), for *RS-DOS with becker port* |
 
 BMCoco starts the first of these it has ROMs for: CoCo 2 (NTSC), CoCo
 (NTSC), CoCo 3, ... If it has none, it says which files it is missing.
@@ -55,14 +58,16 @@ next item starting with it.
 |----------------|--------------|
 | Run a Program  | Choose a disk, tape, cartridge or program and start it: XRoar inserts it and types the commands to run it (`RUN"..."` from a disk, `CLOAD` from a tape, ...) |
 | Disk Drives    | Insert or eject a disk in drives 0-3, and write protect it |
+| Hard Disks     | Hard disk images for drives 0 and 1 of an IDE interface (see Hard disks) |
 | Cassette       | Insert a tape (then type `CLOAD` or `CLOADM`), rewind, eject, fast loading |
 | Cartridge      | Plug in a cartridge file, one of XRoar's built in cartridges (Disk BASIC and others), or none |
 | Machine        | CoCo 1, 2 or 3, PAL or NTSC, with or without a 6309, and the other machines XRoar emulates. Machines without ROMs are marked |
+| Memory         | The machine's RAM: 128K, 512K, 1M or 2M for a CoCo 3, 4K to 64K for a CoCo 1 or 2 (or a Dragon). The machine is reset with it, and it is kept for that machine |
 | Joysticks      | What is plugged into each joystick port, which gamepad is which joystick, GPIO joysticks, and a joystick test |
 | Video          | TV input (composite with artifact colours, S-Video, or RGB for the CoCo 3), the artifact colour renderer, how much border to show, the frame lock, CRT effect and smooth scaling |
 | Keyboard       | Typed characters on or off, and the PC keyboard's layout |
 | Sound          | Volume, and HDMI or the headphone jack |
-| Network        | Ethernet or Wi-Fi, the web UI (see below) |
+| Network        | Ethernet or Wi-Fi, the web UI (see below), and the DriveWire server for the Becker port |
 | Turbo          | Run as fast as the Pi can (also F11) |
 | Reset, Hard Reset | The reset button (F10), or power off and on (Shift+F10) |
 | About          | Versions, the machine, ROM status, display and network |
@@ -121,6 +126,12 @@ the arrow keys then move that joystick and left Alt fires (the arrows then
 no longer reach the CoCo as keys). *Joystick Test* shows what the CoCo
 reads.
 
+**A USB mouse**: give a port **Mouse (USB)** in the *Joysticks* page (or
+`joy_right=mjoy0` in `cmdline.txt`). The mouse then moves that joystick as
+a pointer over the picture, as the CoCo's own mouse does (OS-9's Multi-Vue,
+paint programs, CoCo 3 games), with the left button as fire and the right
+as the second button. `mouse_speed` (percent) changes how far it moves.
+
 **Joysticks on the GPIO header**: set `gpio_joysticks=1` in `cmdline.txt`
 (or in the menu, then reboot). The wiring is BMC64's "GPIO Config 1". The
 pins are active low (each switch connects the pin to ground) and BMCoco
@@ -160,7 +171,53 @@ appeared depended on luck at power on, so if a game's colours are swapped
 choose the other phase (blue-red or red-blue). *S-Video* shows the dots in
 black and white. The *Artifact Colours* renderer chooses between a quick
 table (*Simple*, *5-bit*) and XRoar's simulation of an NTSC TV
-(*Partial*, *Simulated*: the most accurate, but it uses more of the Pi).
+(*Partial*, *Simulated*: the most accurate, but too much for a Pi 2 or 3,
+which then falls behind; use them on a Pi 4).
+
+**When the Pi can't keep up**: if frames take longer to emulate than the
+display shows them for (the most accurate artifact colours on a Pi 3, or a
+CoCo 3 running at double speed in a busy game), waiting for the display
+would halve the speed. BMCoco then stops waiting for it and runs as fast as
+the Pi can, stretching the sound a little (lower in pitch) rather than
+leaving gaps, until frames fit again; the log says so, and every 30
+seconds it logs how busy the Pi is (`BMCoco: load ...`). *About* shows the
+load too. If it happens a lot, choose a quicker artifact renderer.
+
+## Hard disks
+
+XRoar's **IDE interface** cartridge takes two hard disk images, which
+HDB-DOS or NitrOS-9 can use. Copy HDB-DOS (`hdblba.rom`) or YA-DOS
+(`yados.rom`) into `roms`, then in the menu's *Hard Disks* page choose an
+image for drive 0 or 1 (`.ide`, `.vhd`, `.img`, `.hdd`, `.os9`, `.dsk`): if
+no cartridge with hard disks is plugged in, the IDE interface is, and the
+machine is reset. The images and the cartridge are kept for the next boot
+(`hd0`, `hd1` and `hd_cart` in `bmcoco.cfg`).
+
+A cartridge of your own set up in `xroar.conf` works too; for NitrOS-9 EOU
+on a CoCo 3, for example:
+
+```
+cart hdb-dos
+  cart-desc "Load Nitros9 EOU w/HDB-DOS"
+  cart-type ide
+  cart-rom /disks/hdblba.rom
+  load-hd0 /disks/63IDE.ide
+  ram 2048
+```
+
+then choose it in *Cartridge*; *Hard Disks* then changes its images.
+
+## The Becker port (DriveWire)
+
+The Becker port connects the CoCo to a DriveWire server over the network
+(DriveWire 4 or pyDriveWire on a PC, for example), which serves it disk
+images and more. Choose *RS-DOS with becker port* in *Cartridge* (it needs
+HDB-DOS for DriveWire, `hdbdw3bck.rom`, in `roms`), or use the IDE
+interface, which has one too. Set the server's address under *Network*,
+*DriveWire Server* (`becker_ip` and `becker_port` in `cmdline.txt`; port
+65504 if not given), and turn on networking. BMCoco connects once the Pi
+has an address, and tries again every 10 seconds if the server isn't
+there; the log says when it connects.
 
 ## Networking and the web UI
 
@@ -248,6 +305,10 @@ web UI.
 | `typed_keys`        | `0`, `1`                     | `1`      | Keys type the characters printed on them (see Keyboard) |
 | `joy_right`, `joy_left` | `joy0`, `joy1`, `kjoy0` (arrow keys) | `joy0`, `joy1` | What is plugged into each joystick port |
 | `joy1_pad`, `joy2_pad` | `0` automatic, `1`-`4` a gamepad, `-1` none | `0` | Gamepad for Joystick 1 and 2 |
+| `mouse_speed`       | percent                      | `100`    | How far the mouse moves the pointer (see Joysticks) |
+| `ram_NAME`          | K, e.g. `ram_coco3=2048`     | machine's | The RAM of machine NAME (the menu's *Memory*) |
+| `hd0`, `hd1`, `hd_cart` | paths, a cartridge name  | none     | Hard disk images and their cartridge (the menu's *Hard Disks*) |
+| `becker_ip`, `becker_port` | address, port         | `127.0.0.1`, `65504` | The Becker port's DriveWire server |
 | `gpio_joysticks`    | `0`, `1`                     | `0`      | Joysticks on the GPIO header |
 | `enable_logging`    | `off`, `uart`, `file`        | `uart`   | Where the log goes (see Logging) |
 | `network`           | `off`, `ethernet`, `wifi`    | `off`    | Networking (see Networking and the web UI) |
@@ -287,7 +348,10 @@ display doesn't accept 720p at 60 Hz; try another `hdmi_mode`.
 **No sound over HDMI**: try `hdmi_drive=2` in `config.txt`, or
 `audio_out=hdmi` in `cmdline.txt`.
 
-**Sound breaks up**: raise `audio_buffer_ms` in `cmdline.txt`, e.g. to 100.
+**Sound breaks up, or games run slowly**: the Pi may be falling behind
+(see Display and timing): *About* shows the load. Choose a quicker
+artifact renderer (*Simple* or *5-bit*). Otherwise raise
+`audio_buffer_ms` in `cmdline.txt`, e.g. to 100.
 
 **Keyboard or gamepad not working**: unplug it and plug it in again; devices
 can come and go while the emulator runs. Some keyboards need a longer

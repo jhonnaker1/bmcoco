@@ -166,6 +166,41 @@ document.querySelectorAll("button[data-key]").forEach((b) => {
   });
 });
 
+// ---- Mouse ----
+// Clicking the screen captures the mouse (Esc lets it go): it is the
+// CoCo's mouse when a joystick port has Mouse. Sent at most once a frame.
+let mouseDx = 0, mouseDy = 0, mouseButtons = 0, mouseDirty = false;
+const locked = () => document.pointerLockElement === canvas;
+canvas.addEventListener("click", () => {
+  if (!locked()) canvas.requestPointerLock();
+});
+document.addEventListener("pointerlockchange", () => {
+  if (!locked() && mouseButtons) { mouseButtons = 0; mouseDirty = true; }
+  statusEl.dataset.mouse = locked() ? "1" : "";
+});
+canvas.addEventListener("mousemove", (e) => {
+  if (!locked()) return;
+  mouseDx += e.movementX;
+  mouseDy += e.movementY;
+  mouseDirty = true;
+});
+function mouseButton(e, down) {
+  if (!locked()) return;
+  const bit = e.button === 0 ? 1 : e.button === 2 ? 2 : 4;
+  mouseButtons = down ? mouseButtons | bit : mouseButtons & ~bit;
+  mouseDirty = true;
+}
+canvas.addEventListener("mousedown", (e) => mouseButton(e, true));
+canvas.addEventListener("mouseup", (e) => mouseButton(e, false));
+canvas.addEventListener("contextmenu", (e) => e.preventDefault());
+function sendMouse() {
+  if (!mouseDirty) return;
+  send(`/mouse?x=${Math.round(mouseDx)}&y=${Math.round(mouseDy)}&b=${mouseButtons}`);
+  mouseDx = mouseDy = 0;
+  mouseDirty = false;
+}
+setInterval(sendMouse, 16);
+
 // ---- Sound ----
 let audioCtx = null;
 let nextTime = 0;

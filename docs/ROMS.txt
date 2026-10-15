@@ -13,7 +13,12 @@ into this folder. XRoar finds them by file name:
   MC-10                    mc10.rom
 
 Older versions also work: bas10.rom - bas12.rom, extbas10.rom. Dragon
-ROMs (d32.rom, d64_1.rom, d64_2.rom, ddos12a.rom) work too.
+ROMs (d32.rom, d64_1.rom, d64_2.rom, ddos12a.rom) work too, and the
+Prologica CP-400's: cp400bas.rom and cp400ext.rom (or cp400extbas.rom, as
+the Color Computer Archive's XRoar/CP400 folder has it).
+
+For hard disks (the IDE interface): hdblba.rom (HDB-DOS) or yados.rom.
+For the Becker port (DriveWire): hdbdw3bck.rom.
 
 BMCoco starts the first CoCo it has ROMs for: a CoCo 2 (NTSC), then a CoCo 3.
 Choose another in the menu (F12, Machine), or with machine= in cmdline.txt.

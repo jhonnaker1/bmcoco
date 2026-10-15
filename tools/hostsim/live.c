@@ -10,6 +10,7 @@
  *   GET /audio        16 bit mono samples at 44100 Hz made since last asked
  *   GET /key?u=U&p=P  key with USB HID usage U pressed (P=1) or released
  *   GET /pad?n=N&b=B&x=X&y=Y  gamepad N: HOST_PAD_* bits, left stick
+ *   GET /mouse?x=DX&y=DY&b=B  the mouse moved DX, DY; B its buttons
  *
  * Only for testing on your own computer: it listens on 127.0.0.1 only.
  *
@@ -222,6 +223,9 @@ static void handle(int fd)
 		serve_audio(fd);
 	} else if (strcmp(path, "/key") == 0) {
 		sim_push_key(param(query, "u", 0), param(query, "p", 0));
+		reply(fd, "text/plain", NULL, 0);
+	} else if (strcmp(path, "/mouse") == 0) {
+		sim_mouse(param(query, "x", 0), param(query, "y", 0), param(query, "b", 0));
 		reply(fd, "text/plain", NULL, 0);
 	} else if (strcmp(path, "/pad") == 0) {
 		sim_set_pad(param(query, "n", 0), param(query, "b", -1),

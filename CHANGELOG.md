@@ -1,3 +1,21 @@
+## Unreleased
+
+- A Pi too slow for the frame lock (the most accurate artifact colours on a
+  Pi 3, a CoCo 3 at double speed in a busy game) no longer drops to half
+  speed: BMCoco paces by the clock until frames fit again, and stretches
+  the sound rather than leaving gaps. The load is logged every 30 seconds
+  and shown in About
+- The two most accurate artifact renderers are marked as slow on a Pi 2/3
+- Memory in the menu: a CoCo 3's 128K to 2M, a CoCo 1/2's 4K to 64K
+- Hard disks in the menu: images for an IDE interface (HDB-DOS), plugged
+  in when needed, kept for the next boot
+- The Becker port (DriveWire over the network), with the server set in the
+  Network page
+- USB mouse, as the CoCo's mouse in a joystick port
+- The Color Computer Archive's CP-400 Extended BASIC (cp400extbas.rom) is
+  found as it is
+- The joysticks no longer look up their settings on every read
+
 ## 0.2.0 – 2026-10-13
 
 - From BMA800XL 1.1.0: Raspberry Pi 4 B and Pi 400 support

@@ -22,6 +22,7 @@
 #include "webui/webui.h"
 
 #include <circle/logger.h>
+#include <circle_glue.h>
 #include <circle/machineinfo.h>
 #include <circle/net/netsubsystem.h>
 #include <circle/netdevice.h>
@@ -105,6 +106,8 @@ static bool HasWifiFirmware(void) {
 }
 
 static void StartServices(const Options *options) {
+  // newlib's sockets (the Becker port's) go to this network.
+  CGlueNetworkInit(*s_net);
   StartNetworkTimeSync(s_net);
   if (options->GetBool("webui", true)) {
     WebUiStart(s_net, options->Get("webui_pin", ""));

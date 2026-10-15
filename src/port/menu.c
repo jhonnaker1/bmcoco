@@ -33,6 +33,7 @@
 #include "vdisk.h"
 #include "vdrive.h"
 #include "vo.h"
+#include "romlist.h"
 #include "xconfig.h"
 #include "xroar.h"
 
@@ -65,6 +66,7 @@ static struct {
 	int hkbd_lang;
 	int tape_fast;
 	char tape_name[256];
+	char hd_name[2][256];
 } state;
 
 static void state_notify(void *sptr, int tag, void *smsg)
@@ -84,6 +86,11 @@ static void state_notify(void *sptr, int tag, void *smsg)
 	case ui_tag_kbd_translate: state.kbd_translate = msg->value; break;
 	case ui_tag_hkbd_lang: state.hkbd_lang = msg->value; break;
 	case ui_tag_tape_flag_fast: state.tape_fast = msg->value; break;
+	case ui_tag_hd_filename:
+		if (msg->value == 0 || msg->value == 1)
+			snprintf(state.hd_name[msg->value], sizeof(state.hd_name[0]), "%s",
+			         msg->data ? (const char *) msg->data : "");
+		break;
 	case ui_tag_tape_input_filename:
 		snprintf(state.tape_name, sizeof(state.tape_name), "%s",
 		         msg->data ? (const char *) msg->data : "");
@@ -98,7 +105,7 @@ void bmcoco_menu_attach(void)
 	static const int tags[] = {
 		ui_tag_machine, ui_tag_cartridge, ui_tag_joystick_port, ui_tag_tv_input,
 		ui_tag_ccr, ui_tag_picture, ui_tag_kbd_translate, ui_tag_hkbd_lang,
-		ui_tag_tape_flag_fast, ui_tag_tape_input_filename,
+		ui_tag_tape_flag_fast, ui_tag_tape_input_filename, ui_tag_hd_filename,
 	};
 	int client = messenger_client_register();
 	unsigned i;
@@ -279,6 +286,112 @@ static void disks_menu(void)
 	}
 }
 
+/* ---- Hard disks ----------------------------------------------------------- */
+
+static const char *const hd_exts[] = {"ide", "vhd", "img", "hdd", "os9", "dsk", NULL};
+
+/* The cartridge plugged in, if it is one with hard disks: an IDE
+   interface (the built in one, or one from xroar.conf, such as HDB-DOS),
+   or another kind XRoar gives hard disks to. */
+static struct cart_config *hd_cart(void)
+{
+	struct cart_config *cc = state.cart_id > 0 ? cart_config_by_id(state.cart_id) : NULL;
+	if (cc == NULL || cc->type == NULL)
+		return NULL;
+	if (strcmp(cc->type, "ide") == 0 || strcmp(cc->type, "nx32") == 0
+	    || strcmp(cc->type, "mooh") == 0)
+		return cc;
+	return NULL;
+}
+
+/* Puts PATH in hard disk DRIVE, first plugging in XRoar's IDE interface if
+   no cartridge with hard disks is (then the machine is reset). Kept for
+   the next boot (hd0, hd1, hd_cart in bmcoco.cfg). */
+static void insert_hd(int drive, const char *path)
+{
+	struct cart_config *cc = hd_cart();
+	char key[8];
+	int plugged = FALSE;
+	if (cc == NULL) {
+		sds rom = romlist_find("@glenside_ide");
+		if (rom == NULL) {
+			osd_message("The IDE interface needs HDB-DOS (hdblba.rom) or YA-DOS "
+			            "(yados.rom) in the roms folder.", TRUE);
+			return;
+		}
+		sdsfree(rom);
+		cc = cart_config_by_name("ide");
+		if (cc == NULL) {
+			osd_message("XRoar has no IDE interface.", TRUE);
+			return;
+		}
+		ui_update_state(-1, ui_tag_cartridge, cc->id, NULL);
+		plugged = TRUE;
+	}
+	xroar_insert_hd_file(drive, path);
+	snprintf(key, sizeof key, "hd%d", drive);
+	save_setting(key, path);
+	save_setting("hd_cart", cc->name);
+	if (plugged) {
+		xroar_hard_reset();
+		osd_notify("IDE interface plugged in");
+	}
+}
+
+static void eject_hd(int drive)
+{
+	char key[8];
+	xroar_insert_hd_file(drive, NULL);
+	snprintf(key, sizeof key, "hd%d", drive);
+	save_setting(key, "");
+}
+
+static void hard_disks_menu(void)
+{
+	enum { H_INSERT0, H_INSERT1, H_EJECT0, H_EJECT1 };
+	static char names[2][48];
+	int sel = 2;
+	for (;;) {
+		struct cart_config *cc = hd_cart();
+		struct osd_item items[11];
+		int n = 0, d, chosen;
+		char path[512];
+		items[n++] = (struct osd_item){cc ? (cc->description ? cc->description : cc->name)
+		                                  : "No hard disk interface plugged in",
+		                               NULL, OSD_ITEM_LABEL, -1};
+		items[n++] = (struct osd_item){"", NULL, OSD_ITEM_LABEL, -1};
+		for (d = 0; d < 2; d++) {
+			snprintf(names[d], sizeof names[d], "%s",
+			         state.hd_name[d][0] ? base_name(state.hd_name[d]) : "(empty)");
+			items[n++] = (struct osd_item){d == 0 ? "Drive 0" : "Drive 1", names[d],
+			                               OSD_ITEM_SUBMENU, d == 0 ? H_INSERT0 : H_INSERT1};
+		}
+		items[n++] = (struct osd_item){"Eject Drive 0", NULL, 0, H_EJECT0};
+		items[n++] = (struct osd_item){"Eject Drive 1", NULL, 0, H_EJECT1};
+		items[n++] = (struct osd_item){"", NULL, OSD_ITEM_LABEL, -1};
+		items[n++] = (struct osd_item){"Choosing an image plugs in the IDE", NULL, OSD_ITEM_LABEL, -1};
+		items[n++] = (struct osd_item){"interface if none is (it needs", NULL, OSD_ITEM_LABEL, -1};
+		items[n++] = (struct osd_item){"hdblba.rom in roms).", NULL, OSD_ITEM_LABEL, -1};
+		chosen = osd_menu("Hard Disks", items, n, &sel);
+		switch (chosen) {
+		case H_INSERT0:
+		case H_INSERT1:
+			d = chosen == H_INSERT0 ? 0 : 1;
+			if (browse(d == 0 ? "Hard Disk 0" : "Hard Disk 1", hd_exts, path, sizeof(path))) {
+				insert_hd(d, path);
+				return;
+			}
+			break;
+		case H_EJECT0:
+		case H_EJECT1:
+			eject_hd(chosen == H_EJECT0 ? 0 : 1);
+			break;
+		default:
+			return;
+		}
+	}
+}
+
 /* ---- Cassette ----------------------------------------------------------- */
 
 static void tape_menu(void)
@@ -435,6 +548,71 @@ static void machine_menu(void)
 	save_setting("machine", configs[chosen]->name);
 }
 
+/* ---- Memory ---------------------------------------------------------------- */
+
+/* The RAM sizes XRoar has for a machine, in K: a CoCo 3 128K to 2M (as
+   with a 512K upgrade or a 2M board), a CoCo 1 or 2 (or a Dragon) 4K to
+   64K. The MC-10's is fixed. */
+static const int *ram_sizes(const struct machine_config *mc)
+{
+	static const int coco3[] = {128, 512, 1024, 2048, 0};
+	static const int coco[] = {4, 16, 32, 64, 0};
+	if (mc == NULL || mc->architecture == NULL || strcmp(mc->architecture, "mc10") == 0)
+		return NULL;
+	return strcmp(mc->architecture, "coco3") == 0 ? coco3 : coco;
+}
+
+static const char *ram_text(int k, char *buf, size_t size)
+{
+	if (k >= 1024 && k % 1024 == 0)
+		snprintf(buf, size, "%dM", k / 1024);
+	else
+		snprintf(buf, size, "%dK", k);
+	return buf;
+}
+
+static const char *memory_value(void)
+{
+	static char buf[16];
+	struct machine_config *mc = xroar.machine_config;
+	if (mc == NULL || mc->ram <= 0)
+		return NULL;
+	return ram_text(mc->ram, buf, sizeof buf);
+}
+
+/* Chooses the machine's RAM: kept for that machine (ram_NAME in
+   bmcoco.cfg), and the machine is set up again and hard reset, as
+   choosing a machine does. */
+static void memory_menu(void)
+{
+	struct machine_config *mc = xroar.machine_config;
+	const int *sizes = ram_sizes(mc);
+	char names[8][16];
+	const char *choices[8];
+	char key[64];
+	int n, current = 0, i;
+	if (sizes == NULL) {
+		osd_message("This machine's memory can't be changed.", TRUE);
+		return;
+	}
+	for (n = 0; sizes[n] != 0 && n < 7; n++) {
+		choices[n] = ram_text(sizes[n], names[n], sizeof names[n]);
+		if (sizes[n] <= mc->ram)
+			current = n;
+	}
+	choices[n] = NULL;
+	i = osd_choose("Memory", choices, current);
+	if (i < 0 || sizes[i] == mc->ram)
+		return;
+	mc->ram = sizes[i];
+	if (strcmp(mc->architecture, "coco3") != 0)
+		mc->ram_org = ANY_AUTO;     /* the chips for that size */
+	snprintf(key, sizeof key, "ram_%s", mc->name);
+	save_setting_int(key, sizes[i]);
+	ui_update_state(-1, ui_tag_machine, mc->id, NULL);
+	osd_notify("Machine reset with the new memory");
+}
+
 /* ---- Joysticks ---------------------------------------------------------- */
 
 static const char *joystick_name(int id)
@@ -448,6 +626,8 @@ static const char *joystick_name(int id)
 		return "Joystick 2";
 	if (strcmp(jc->name, "kjoy0") == 0)
 		return "Arrow keys";
+	if (strcmp(jc->name, "mjoy0") == 0)
+		return "Mouse";
 	return jc->description ? jc->description : jc->name;
 }
 
@@ -463,9 +643,9 @@ static void set_port(int port, const char *name)
 
 static void choose_port(int port)
 {
-	static const char *const names[] = {"joy0", "joy1", "kjoy0", NULL};
+	static const char *const names[] = {"joy0", "joy1", "kjoy0", "mjoy0", NULL};
 	static const char *const choices[] = {
-		"Joystick 1", "Joystick 2", "Arrow keys + Alt (fire)", NULL
+		"Joystick 1", "Joystick 2", "Arrow keys + Alt (fire)", "Mouse (USB)", NULL
 	};
 	struct joystick_config *jc = joystick_config_by_id(state.joystick_id[port]);
 	int current = 0, i;
@@ -587,6 +767,8 @@ static const char *vsync_mode(void)
 		return "On";
 	if (strcmp(mode, "off") == 0 || strcmp(mode, "0") == 0)
 		return "Off";
+	if (bmcoco_vsync_locked() && bmcoco_overloaded())
+		return "Auto (Pi too slow)";
 	return bmcoco_vsync_locked() ? "Auto (locked)" : "Auto (timer)";
 }
 
@@ -620,13 +802,29 @@ static void video_menu(void)
 				save_setting("tv_input", machine_tv_input_list[i].name);
 			}
 			break;
-		case V_CCR:
-			i = choose_enum("Artifact Colours", vo_cmp_ccr_list, state.ccr);
+		case V_CCR: {
+			/* The two most accurate are too much for a Pi 2 or 3
+			   (they make it fall behind): say so. */
+			static char names[8][40];
+			const char *choices[8];
+			int n, current = 0;
+			for (n = 0; vo_cmp_ccr_list[n].name != NULL && n < 7; n++) {
+				int slow = vo_cmp_ccr_list[n].value == VO_CMP_CCR_PARTIAL
+				           || vo_cmp_ccr_list[n].value == VO_CMP_CCR_SIMULATED;
+				snprintf(names[n], sizeof names[n], "%s%s",
+				         vo_cmp_ccr_list[n].description, slow ? " (slow on Pi 2/3)" : "");
+				choices[n] = names[n];
+				if (vo_cmp_ccr_list[n].value == state.ccr)
+					current = n;
+			}
+			choices[n] = NULL;
+			i = osd_choose("Artifact Colours", choices, current);
 			if (i >= 0) {
 				ui_update_state(-1, ui_tag_ccr, vo_cmp_ccr_list[i].value, NULL);
 				save_setting("artifacts", vo_cmp_ccr_list[i].name);
 			}
 			break;
+		}
 		case V_PICTURE: {
 			/* "auto" isn't a picture area of its own. */
 			i = choose_enum("Picture Area", vo_viewport_list + 1, state.picture);
@@ -877,12 +1075,13 @@ static int scan_wifi(void)
 
 static void network_menu(void)
 {
-	enum { N_DEVICE, N_SCAN, N_SSID, N_PASSWORD, N_COUNTRY, N_WEBUI, N_PIN, N_TIMEZONE, N_REBOOT };
+	enum { N_DEVICE, N_SCAN, N_SSID, N_PASSWORD, N_COUNTRY, N_WEBUI, N_PIN, N_TIMEZONE,
+	       N_DRIVEWIRE, N_REBOOT };
 	static const char *const devices[] = {"off", "ethernet", "wifi", NULL};
 	static const char *const device_names[] = {"Off", "Ethernet", "Wi-Fi", NULL};
 	int sel = 2;
 	for (;;) {
-		char status[64], tz[16];
+		char status[64], tz[16], drivewire[80];
 		const char *net = host_option("network", "off");
 		const char *pin = host_option("webui_pin", "");
 		int device = strcmp(net, "ethernet") == 0 ? 1 : strcmp(net, "wifi") == 0 ? 2 : 0;
@@ -891,6 +1090,8 @@ static void network_menu(void)
 
 		read_wifi_config();
 		host_network_status(status, sizeof(status));
+		snprintf(drivewire, sizeof(drivewire), "%s:%s", host_option("becker_ip", "127.0.0.1"),
+		         host_option("becker_port", "65504"));
 		if (minutes == 0)
 			strcpy(tz, "UTC");
 		else
@@ -907,6 +1108,7 @@ static void network_menu(void)
 				{"Web UI", NULL, check(setting_on("webui", TRUE)), N_WEBUI},
 				{"Web UI PIN", pin[0] ? pin : "(none)", OSD_ITEM_SUBMENU, N_PIN},
 				{"Time Zone", tz, OSD_ITEM_SUBMENU, N_TIMEZONE},
+				{"DriveWire Server", drivewire, OSD_ITEM_SUBMENU, N_DRIVEWIRE},
 				{"", NULL, OSD_ITEM_LABEL, -1},
 				{"Changes apply after a reboot.", NULL, OSD_ITEM_LABEL, -1},
 				{"Reboot Now", NULL, 0, N_REBOOT},
@@ -950,6 +1152,21 @@ static void network_menu(void)
 			}
 			break;
 		}
+		case N_DRIVEWIRE: {
+			/* The Becker port's server: ADDRESS or ADDRESS:PORT. */
+			char text[80];
+			snprintf(text, sizeof(text), "%s", drivewire);
+			if (osd_edit("DriveWire Server (address:port)", text, sizeof(text), FALSE)) {
+				char *colon = strrchr(text, ':');
+				if (colon != NULL) {
+					*colon = '\0';
+					save_setting("becker_port", colon[1] ? colon + 1 : "65504");
+				}
+				save_setting("becker_ip", text[0] ? text : "127.0.0.1");
+				reboot_needed = TRUE;
+			}
+			break;
+		}
 		case N_TIMEZONE: {
 			static char labels[27][8];
 			static const char *zones[28];
@@ -986,8 +1203,9 @@ static void about(void)
 {
 	char text[640], status[64];
 	const char *missing = bmcoco_missing_roms();
-	int w, h;
+	int w, h, load_avg, load_max;
 	host_display_size(&w, &h);
+	bmcoco_load(&load_avg, &load_max);
 	host_network_status(status, sizeof(status));
 	snprintf(text, sizeof(text),
 	         "BMCoco " BMCOCO_VERSION "\n"
@@ -1001,10 +1219,13 @@ static void about(void)
 	         "%s\n"
 	         "Display: %dx%d %.2f Hz\n"
 	         "Machine: %.2f Hz, %s\n"
+	         "Load: %d%% of a frame (most %d%%)\n"
 	         "Network: %s",
 	         machine_name(), missing ? "MISSING" : "OK", missing ? missing : "",
 	         w, h, bmcoco_refresh_rate(), bmcoco_machine_rate(),
-	         bmcoco_vsync_locked() ? "locked to display" : "timer paced", status);
+	         !bmcoco_vsync_locked() ? "timer paced"
+	         : bmcoco_overloaded() ? "Pi too slow: timer paced" : "locked to display",
+	         load_avg, load_max, status);
 	osd_info("About BMCoco", text);
 }
 
@@ -1019,7 +1240,7 @@ static void offer_reboot(void)
 void bmcoco_menu(void)
 {
 	enum {
-		M_RUN, M_DISKS, M_TAPE, M_CART, M_MACHINE, M_JOYSTICKS, M_VIDEO, M_KEYBOARD,
+		M_RUN, M_DISKS, M_HD, M_TAPE, M_CART, M_MACHINE, M_MEMORY, M_JOYSTICKS, M_VIDEO, M_KEYBOARD,
 		M_SOUND, M_NETWORK, M_TURBO, M_RESET, M_HARD_RESET, M_ABOUT, M_REBOOT, M_OFF
 	};
 	static int sel = 2;
@@ -1034,9 +1255,11 @@ void bmcoco_menu(void)
 			{"", NULL, OSD_ITEM_LABEL, -1},
 			{"Run a Program", NULL, OSD_ITEM_SUBMENU, M_RUN},
 			{"Disk Drives", NULL, OSD_ITEM_SUBMENU, M_DISKS},
+			{"Hard Disks", NULL, OSD_ITEM_SUBMENU, M_HD},
 			{"Cassette", NULL, OSD_ITEM_SUBMENU, M_TAPE},
 			{"Cartridge", cart_name(state.cart_id), OSD_ITEM_SUBMENU, M_CART},
 			{"Machine", NULL, OSD_ITEM_SUBMENU, M_MACHINE},
+			{"Memory", memory_value(), OSD_ITEM_SUBMENU, M_MEMORY},
 			{"Joysticks", NULL, OSD_ITEM_SUBMENU, M_JOYSTICKS},
 			{"Video", NULL, OSD_ITEM_SUBMENU, M_VIDEO},
 			{"Keyboard", NULL, OSD_ITEM_SUBMENU, M_KEYBOARD},
@@ -1055,9 +1278,11 @@ void bmcoco_menu(void)
 		switch (chosen) {
 		case M_RUN: leave = run_file(); break;
 		case M_DISKS: disks_menu(); break;
+		case M_HD: hard_disks_menu(); break;
 		case M_TAPE: tape_menu(); break;
 		case M_CART: cart_menu(); break;
 		case M_MACHINE: machine_menu(); break;
+		case M_MEMORY: memory_menu(); break;
 		case M_JOYSTICKS: joysticks_menu(); break;
 		case M_VIDEO: video_menu(); break;
 		case M_KEYBOARD: keyboard_menu(); break;

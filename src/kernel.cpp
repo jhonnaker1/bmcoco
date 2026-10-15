@@ -108,7 +108,8 @@ CKernel::CKernel(void)
       mAudioOut(VCHIQSoundDestinationAuto),
 #endif
       m_MergedModifiers(0),
-      m_KeyQueueHead(0), m_KeyQueueTail(0), m_bGPIOJoysticks(false) {
+      m_KeyQueueHead(0), m_KeyQueueTail(0), m_pMouse(0), m_MouseDx(0),
+      m_MouseDy(0), m_MouseButtons(0), m_bGPIOJoysticks(false) {
   s_pThis = this;
   for (unsigned i = 0; i < MAX_KEYBOARDS; i++) {
     m_pKeyboard[i] = 0;
@@ -243,6 +244,7 @@ bool CKernel::Initialize(void) {
 TShutdownMode CKernel::Run(void) {
   SetupUSBKeyboards();
   SetupUSBGamePads();
+  SetupUSBMouse();
 
   mEmulatorCore.Launch();
 
@@ -255,6 +257,7 @@ TShutdownMode CKernel::Run(void) {
     if (mUSBHCI.UpdatePlugAndPlay()) {
       SetupUSBKeyboards();
       SetupUSBGamePads();
+      SetupUSBMouse();
     }
 
     unsigned beat = s_Core1Beat;
@@ -600,6 +603,49 @@ int CKernel::PadAxis(int pad, int axis) {
     return -1;
   }
   return m_PadAnalog[pad][axis];
+}
+
+//
+// USB mouse
+//
+
+void CKernel::SetupUSBMouse(void) {
+  if (m_pMouse != 0) {
+    return;
+  }
+  m_pMouse = (CMouseDevice *)mDeviceNameService.GetDevice("mouse1", FALSE);
+  if (m_pMouse != 0) {
+    m_pMouse->RegisterRemovedHandler(MouseRemovedHandler);
+    m_pMouse->RegisterStatusHandler(MouseStatusHandler);
+    mLogger.Write(FromKernel, LogNotice, "Mouse connected");
+  }
+}
+
+void CKernel::MouseStatusHandler(unsigned nButtons, int nDisplacementX,
+                                 int nDisplacementY, int nWheelMove) {
+  CKernel *k = s_pThis;
+  if (k == 0) {
+    return;
+  }
+  __atomic_add_fetch(&k->m_MouseDx, nDisplacementX, __ATOMIC_RELAXED);
+  __atomic_add_fetch(&k->m_MouseDy, nDisplacementY, __ATOMIC_RELAXED);
+  __atomic_store_n(&k->m_MouseButtons, (int)(nButtons & 7), __ATOMIC_RELEASE);
+}
+
+void CKernel::MouseRemovedHandler(CDevice *pDevice, void *pContext) {
+  CKernel *k = s_pThis;
+  if (k == 0) {
+    return;
+  }
+  k->m_pMouse = 0;
+  k->m_MouseButtons = 0;
+}
+
+int CKernel::MouseRead(int *dx, int *dy, int *buttons) {
+  *dx = __atomic_exchange_n(&m_MouseDx, 0, __ATOMIC_RELAXED);
+  *dy = __atomic_exchange_n(&m_MouseDy, 0, __ATOMIC_RELAXED);
+  *buttons = __atomic_load_n(&m_MouseButtons, __ATOMIC_ACQUIRE);
+  return m_pMouse != 0;
 }
 
 //
@@ -998,6 +1044,10 @@ unsigned host_key_modifiers(void) { return CKernel::Get()->KeyModifiers(); }
 int host_pad_state(int pad) { return CKernel::Get()->PadState(pad); }
 
 int host_pad_axis(int pad, int axis) { return CKernel::Get()->PadAxis(pad, axis); }
+
+int host_mouse_read(int *dx, int *dy, int *buttons) {
+  return CKernel::Get()->MouseRead(dx, dy, buttons);
+}
 
 int host_gpio_joystick(int port) { return CKernel::Get()->GpioJoystick(port); }
 

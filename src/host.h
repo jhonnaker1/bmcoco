@@ -99,6 +99,10 @@ int host_pad_state(int pad);
    stick (or none is connected there). */
 int host_pad_axis(int pad, int axis);
 
+/* USB mice: how far they moved since last asked, and the buttons held
+   (bit 0 left, 1 right, 2 middle). Returns 0 if there is no mouse. */
+int host_mouse_read(int *dx, int *dy, int *buttons);
+
 /* State of the joystick wired to GPIO port PORT (0 or 1), as HOST_JOY_* bits.
    Always 0 when GPIO joysticks are disabled. */
 int host_gpio_joystick(int port);

@@ -18,6 +18,7 @@
 #include <circle/gpiomanager.h>
 #include <circle/gpiopin.h>
 #include <circle/input/console.h>
+#include <circle/input/mouse.h>
 #include <circle/interrupt.h>
 #include <circle/koptions.h>
 #include <circle/logger.h>
@@ -89,6 +90,7 @@ public:
   unsigned KeyModifiers(void);
   int PadState(int pad);
   int PadAxis(int pad, int axis);
+  int MouseRead(int *dx, int *dy, int *buttons);
   int GpioJoystick(int port);
   double Time(void);
   void Reboot(void);
@@ -107,9 +109,13 @@ private:
   static void GamePadStatusHandler(unsigned nDeviceIndex,
                                    const TGamePadState *pState);
   static void GamePadRemovedHandler(CDevice *pDevice, void *pContext);
+  static void MouseStatusHandler(unsigned nButtons, int nDisplacementX,
+                                 int nDisplacementY, int nWheelMove);
+  static void MouseRemovedHandler(CDevice *pDevice, void *pContext);
 
   void SetupUSBKeyboards(void);
   void SetupUSBGamePads(void);
+  void SetupUSBMouse(void);
   void SetupGPIOJoysticks(void);
   void PushKeyEvent(int usage, int pressed);
   void UpdateMergedKeys(void);
@@ -174,6 +180,13 @@ private:
   // Axes the direction is read from on pads Circle doesn't know.
   int m_PadAxisX[HOST_PADS];
   int m_PadAxisY[HOST_PADS];
+
+  // The mouse (all USB mice are "mouse1"). The USB interrupt adds up how
+  // far it moves; the emulator takes the sums.
+  CMouseDevice *m_pMouse;
+  volatile int m_MouseDx;
+  volatile int m_MouseDy;
+  volatile int m_MouseButtons;
 
   bool m_bGPIOJoysticks;
   CGPIOPin *m_pJoyPins[2][5];

@@ -49,6 +49,11 @@ void bmcoco_idle(void);
 double bmcoco_refresh_rate(void);
 double bmcoco_machine_rate(void);
 int bmcoco_vsync_locked(void);
+/* TRUE while frames take longer than the display's refresh and the clock
+   paces instead; and how long they take, in % of a refresh (the smoothed
+   average, and the most in the last 30 seconds). */
+int bmcoco_overloaded(void);
+void bmcoco_load(int *average, int *maximum);
 void bmcoco_video_settings_changed(void);
 void bmcoco_sound_settings_changed(void);
 int bmcoco_turbo(void);

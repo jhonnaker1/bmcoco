@@ -86,9 +86,11 @@ build differs.
 
 `tools/hostsim` builds the emulator port (XRoar plus `src/port/`) for the
 PC, with a simulated display, sound and input in place of the Raspberry Pi.
-It runs scripted tests: booting, the display lock and timer pacing, the
-keyboard, analog and digital joysticks, the menu, web UI requests, saved
-settings, and checking the sound stays in step with the display.
+It runs scripted tests: booting, the display lock and timer pacing, a Pi
+too slow for the frame lock (`BMCOCO_SIM_FRAME_MS` makes each frame take
+that long), the keyboard, analog and digital joysticks, the mouse, the
+menu, memory, hard disks, web UI requests, saved settings, and checking the
+sound stays in step with the display.
 
 ```
 tools/hostsim/run_tests.sh
@@ -98,7 +100,8 @@ BMCOCO_ROMS=/path/to/your/roms tools/hostsim/run_tests.sh
 The CoCo's ROMs can't be distributed, so the tests run a small stand-in
 ROM that `tools/hostsim/make_test_rom.py` assembles: it shows the keyboard
 matrix, the joysticks and a frame counter, and makes a sound. With
-`BMCOCO_ROMS` set, Color BASIC and the CoCo 3 are tested too. Screenshots
+`BMCOCO_ROMS` set, Color BASIC, the CoCo 3 and the Becker port (with a
+stand-in DriveWire server) are tested too. Screenshots
 (`.ppm`) are written to `tools/hostsim/out/`.
 
 To play with the port on the PC, run it live:
@@ -153,7 +156,7 @@ with `tools/gen_webui_assets.py` whenever an asset changes.
 | `src/port/joystick.c`        | Gamepads and GPIO joysticks as the CoCo's joysticks |
 | `src/port/menu.c`, `osd.c`   | The menu and its on-screen display          |
 | `src/port/posix_extra.c`     | regcomp(), basename(), access() for newlib  |
-| `src/port/becker_stub.c`     | XRoar's Becker port, switched off           |
+| `src/port/becker.c`          | XRoar's Becker port (DriveWire over TCP), without blocking |
 | `src/port/config.h`          | XRoar's build configuration                 |
 | `src/port/xroar.mk`          | Which XRoar sources are built               |
 | `src/patches/`               | Changes applied to Circle by `make_all.sh`  |
