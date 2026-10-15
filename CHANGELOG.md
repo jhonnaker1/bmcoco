@@ -1,3 +1,19 @@
+## Unreleased
+
+- From BMA800XL 1.2.0 to 1.4.0:
+  - Raspberry Pi 5, Pi 500 and Pi 500+ (`kernel_2712.img`): BMA800XL's
+    display driver, run at the CoCo's exact rate; Resolution in the Video
+    menu (the Pi 5's firmware ignores `hdmi_mode`); HDMI sound; the power
+    button shuts down (docs/PI5.md)
+  - Raspberry Pi Zero and Zero W (`kernel.img`), on their one core
+  - The Pi 4 and 5's 3D GPU draws the CRT effect and smooth scaling, at the
+    full 1080 lines (`crt_gpu=0` for the ARM, as before)
+  - CRT Curvature in the Video menu
+  - Fix the Pi 2 and 3 starting at 1080p instead of 720p
+  - Logging is off unless `enable_logging` is set (`file` to see the load
+    reports); File logs to the serial port too, and the log file is
+    complete after a crash, a hang or switching off
+
 ## 0.3.1 – 2026-10-15
 
 - Missing CP-400 and MX-1600 ROMs are named by their files (cp400bas.rom,

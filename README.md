@@ -51,14 +51,19 @@ HDMI; sound can also go to the 3.5mm jack.
 
 The Raspberry Pi 4 Model B and Pi 400 (`kernel8-rpi4.img`, 64-bit) are
 supported too, with the display run at the CoCo's exact refresh rate on either
-HDMI port, and sound over HDMI or the Pi 4 B's 3.5mm jack. See
-[docs/PI4.md](docs/PI4.md). (Pi 4 support comes from BMA800XL 1.1.0.)
+HDMI port, the CRT effect and smooth scaling drawn by its 3D GPU, and sound
+over HDMI or the Pi 4 B's 3.5mm jack. See [docs/PI4.md](docs/PI4.md).
 
 The Raspberry Pi 5, Pi 500 and Pi 500+ (`kernel_2712.img`, 64-bit) are
 supported too. See [docs/PI5.md](docs/PI5.md).
 
 The Raspberry Pi Zero and Zero W (`kernel.img`) work like the Pi 2 and 3,
-with everything on their one core.
+with everything on their one, slower core: a CoCo 1 or 2 with the quicker
+artifact colours suits them best; when the Pi can't keep up, BMCoco runs as
+fast as it can (see the User Guide's *Display and timing*).
+
+Pi 4 support comes from BMA800XL 1.1.0, and the Pi 4's 3D GPU, the Pi 5 and
+the Pi Zero from BMA800XL 1.2.0 to 1.4.0.
 
 ## Getting started
 

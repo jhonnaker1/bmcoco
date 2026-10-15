@@ -180,8 +180,9 @@ CoCo 3 running at double speed in a busy game), waiting for the display
 would halve the speed. BMCoco then stops waiting for it and runs as fast as
 the Pi can, stretching the sound a little (lower in pitch) rather than
 leaving gaps, until frames fit again; the log says so, and every 30
-seconds it logs how busy the Pi is (`BMCoco: load ...`). *About* shows the
-load too. If it happens a lot, choose a quicker artifact renderer.
+seconds it logs how busy the Pi is (`BMCoco: load ...`; logging is off
+unless `enable_logging=file` or `uart` is set, see Logging). *About* shows
+the load too. If it happens a lot, choose a quicker artifact renderer.
 
 ## Hard disks
 
