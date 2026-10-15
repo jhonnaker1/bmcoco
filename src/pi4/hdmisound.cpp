@@ -2,7 +2,7 @@
 // hdmisound.cpp
 //
 // See hdmisound.h: Circle's HDMI sound driver (R. Stange, GPL 3), for
-// either HDMI port of the Pi 4.
+// either HDMI port of the Pi 4 or 5.
 //
 // This file is part of BMCoco, a bare metal Tandy Color Computer emulator for
 // the Raspberry Pi. See LICENSE for licensing details.
@@ -23,16 +23,37 @@ static const char From[] = "sndhdmi";
 
 namespace {
 
-// Per port: core, PHY, packet RAM, MAI (in "hd"), DMA request.
+// Per port: core, PHY, packet RAM, MAI (in "hd"), DMA requests (the Pi
+// 5's change with its D0 stepping).
 struct PortAddresses {
   uintptr core, phy, ram, mai;
-  unsigned dreq;
+  unsigned dreq, dreq_d0;
 };
+#if RASPPI >= 5
+const PortAddresses Ports[2] = {
+    {ARM_IO_BASE + 0x701400, ARM_IO_BASE + 0x701D00, ARM_IO_BASE + 0x703800,
+     ARM_IO_BASE + 0x720000 + 0x10, 10, 12},
+    {ARM_IO_BASE + 0x706400, ARM_IO_BASE + 0x706D00, ARM_IO_BASE + 0x708800,
+     ARM_IO_BASE + 0x720000 + 0x30, 17, 13},
+};
+const uintptr DvpMiscConfig = ARM_IO_BASE + 0x700008;
+
+// Core registers (from the port's core base), as Circle has them for the
+// Pi 5.
+const uintptr MaiChannelMap = 0xA4;
+const uintptr MaiConfig = 0xA8;
+const uintptr AudioPacketConfig = 0xC0;
+const uintptr RamPacketConfig = 0xC4;
+const uintptr RamPacketStatus = 0xCC;
+const uintptr CrpConfig = 0xD0;
+const uintptr Cts0 = 0xD4, Cts1 = 0xD8;
+const uintptr Hotplug = 0x1C8;
+#else
 const PortAddresses Ports[2] = {
     {ARM_IO_BASE + 0xF00700, ARM_IO_BASE + 0xF00F00, ARM_IO_BASE + 0xF01B00,
-     ARM_IO_BASE + 0xF20000 + 0x10, 10},
+     ARM_IO_BASE + 0xF20000 + 0x10, 10, 10},
     {ARM_IO_BASE + 0xF05700, ARM_IO_BASE + 0xF05F00, ARM_IO_BASE + 0xF06B00,
-     ARM_IO_BASE + 0xF20000 + 0x30, 17},
+     ARM_IO_BASE + 0xF20000 + 0x30, 17, 17},
 };
 const uintptr DvpMiscConfig = ARM_IO_BASE + 0xF00008;
 
@@ -46,6 +67,17 @@ const uintptr RamPacketStatus = 0xC4;
 const uintptr CrpConfig = 0xC8;
 const uintptr Cts0 = 0xCC, Cts1 = 0xD0;
 const uintptr Hotplug = 0x1A8;
+#endif
+
+// The Pi 5's D0 stepping: other DMA requests, and the MAI threshold's
+// fields moved.
+bool SteppingD0(void) {
+#if RASPPI >= 5
+  return CMachineInfo::Get()->GetSoCStepping() >= SoCSteppingD0;
+#else
+  return false;
+#endif
+}
 // MAI registers (from the port's MAI base).
 const uintptr MaiControl = 0x00;
 const uintptr MaiThreshold = 0x04;
@@ -169,11 +201,14 @@ boolean Pi4HdmiSound::Start(void) {
   memset(m_pDMABuffer[1], 0, length);
   const void *buffers[2] = {m_pDMABuffer[0], m_pDMABuffer[1]};
   m_pDMAChannel->SetupCyclicIOWrite(m_Mai + MaiData, buffers, 2, length,
-                                    (TDREQ)Ports[m_nPort].dreq);
+                                    (TDREQ)(SteppingD0() ? Ports[m_nPort].dreq_d0
+                                                         : Ports[m_nPort].dreq));
   m_pDMAChannel->SetCompletionRoutine(DmaCompletionStub, this);
   m_pDMAChannel->Start();
 
+#if RASPPI == 4
   write32(m_Phy + PhyPowerDown, read32(m_Phy + PhyPowerDown) & ~PhyRngPowerDown);
+#endif
   write32(m_Mai + MaiControl, IEC958_HW_CHANNELS << MaiChannelNumberShift |
                                   MaiWholeSample | MaiChannelAlign | MaiEnable);
   return TRUE;
@@ -209,7 +244,11 @@ void Pi4HdmiSound::RunHdmi(void) {
   write32(m_Mai + MaiControl, MaiReset | MaiFlush | MaiDelayed | MaiErrorEmpty | MaiErrorFull);
   write32(m_Mai + MaiSampleRate, (u32)num << 8 | (u32)(den - 1));
   write32(m_Mai + MaiFormat, SampleRateFormat(m_nSampleRate) << 8 | 2 << 16);  // PCM
-  write32(m_Mai + MaiThreshold, 16 << 24 | 16 << 16 | 16 << 8 | 16);
+  if (SteppingD0()) {
+    write32(m_Mai + MaiThreshold, 0x10 << 23 | 0x10 << 15 | 0x1C << 7 | 0x1C);
+  } else {
+    write32(m_Mai + MaiThreshold, 16 << 24 | 16 << 16 | 16 << 8 | 16);
+  }
   write32(m_Core + MaiConfig, 1u << 26 | 1u << 27 | 0b11);  // bit/format reverse, 2 channels
   write32(m_Core + MaiChannelMap, 0b00010000);
   write32(m_Core + AudioPacketConfig, 1u << 29 | 1u << 24 |
@@ -225,7 +264,9 @@ void Pi4HdmiSound::RunHdmi(void) {
 
 void Pi4HdmiSound::StopHdmi(void) {
   write32(m_Mai + MaiControl, MaiDelayed | MaiErrorEmpty | MaiErrorFull);
+#if RASPPI == 4
   write32(m_Phy + PhyPowerDown, read32(m_Phy + PhyPowerDown) | PhyRngPowerDown);
+#endif
 }
 
 void Pi4HdmiSound::ResetHdmi(void) {

@@ -1,10 +1,10 @@
 //
 // sound.h
 //
-// The Pi 4's sound, without the VideoCore firmware: Circle's HDMI sound
-// driver, adapted for either HDMI port (hdmisound.h), which sends the
+// The Pi 4's and 5's sound, without the VideoCore firmware: Circle's HDMI
+// sound driver, adapted for either HDMI port (hdmisound.h), which sends the
 // samples to the port the display is on by DMA, or Circle's PWM sound
-// driver (CPWMSoundBaseDevice) for the headphone jack.
+// driver (CPWMSoundBaseDevice) for the Pi 4 B's headphone jack.
 // The emulator's samples go into the driver's queue (Write()).
 //
 // Sources:
@@ -19,7 +19,8 @@
 //    the chunk size counts words, two per stereo frame;
 //    lib/machineinfo.cpp: its pins on the Pi 4 are GPIO 40 and 41, the
 //    headphone jack's; README.md: "PWM sound output (on headphone jack)".
-//  - Raspberry Pi 400 product brief: the Pi 400 has no headphone jack.
+//  - Raspberry Pi 400, 5, 500 and 500+ product briefs: no headphone jack
+//    (Circle's README.md: PWM sound on the Pi 5 only "with adapter").
 //  - Circle, include/circle/sound/soundbasedevice.h: the queue
 //    (AllocateQueueFrames, SetWriteFormat, Write, GetQueueFramesAvail) and
 //    the rule that only Write(), GetQueueFramesAvail() and IsActive() may
@@ -45,7 +46,7 @@ public:
 
   // Where the sound goes (the audio_out option): HDMI, falling back to the
   // headphone jack if the display takes no sound (Auto); HDMI; or the
-  // headphone jack (the Pi 400 has none: HDMI there).
+  // headphone jack (the Pi 400 and 5 have none: HDMI there).
   enum class Output { Auto, Hdmi, Headphones };
 
   // Core 0, at start up. VOLUME is 0..100 percent.

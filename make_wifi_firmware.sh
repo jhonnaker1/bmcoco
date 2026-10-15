@@ -152,6 +152,14 @@ do
     cp "$firmware_cache_dir/$firmware" "$OUTPUT_DIRECTORY/firmware/"
 done
 
+# Circle looks for the Pi 5's (and Pi 500's) firmware under its own name:
+# the 43455 files (Circle's firmware5 target downloads the same ones).
+for ext in bin txt clm_blob
+do
+    cp "$firmware_cache_dir/brcmfmac43455-sdio.$ext" \
+        "$OUTPUT_DIRECTORY/firmware/brcmfmac43455-sdio.raspberrypi,5-model-b.$ext"
+done
+
 for license in "${WLAN_LICENSES[@]}"
 do
     cp "$license_cache_dir/$license" "$OUTPUT_DIRECTORY/firmware/"

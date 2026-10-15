@@ -9,6 +9,8 @@
 
 #include "video.h"
 
+#include "../logging.h"
+
 #include <circle/bcmpropertytags.h>
 #include <circle/logger.h>
 #include <circle/sched/scheduler.h>
@@ -62,7 +64,7 @@ void FillFrameBuffer(void *dst, uint64_t value, unsigned long bytes) {
 
 Pi4Video::Pi4Video(void)
     : m_pFrameBuffer(0), m_nDepth(0), m_nWidth(0), m_nHeight(0), m_nPitch(0),
-      m_nBackPage(1), m_nDisplayWidth(0), m_nDisplayHeight(0),
+      m_nPages(2), m_nBackPage(1), m_nDisplayWidth(0), m_nDisplayHeight(0),
       m_nLastVsync(0), m_nVsyncPeriod(0), m_pSource(0),
       m_nSourceWidth(0), m_nSourceHeight(0), m_nViewX(0), m_nViewY(0),
       m_nViewW(0), m_nViewH(0), m_nDestX(0), m_nDestY(0), m_nDestW(0),
@@ -70,7 +72,9 @@ Pi4Video::Pi4Video(void)
       m_bCrt(false), m_bSmooth(false), m_bCurvature(false),
       m_bScalerReady(false), m_pJobPage(0), m_pKms(0),
       m_Driver(Driver::Firmware), m_pKmsTarget(0),
-      m_nKmsPitch(0) {
+      m_nKmsPitch(0), m_pGpuOffered(0), m_pGpu(0), m_bGpuReady(false),
+      m_nKmsSrcW(0), m_nKmsSrcH(0), m_fKmsAspect(1.0), m_fKmsScale(1.0),
+      m_bKmsResize(false) {
   for (unsigned i = 0; i < 4; i++) {
     m_pLine[i] = 0;
   }
@@ -91,8 +95,17 @@ bool Pi4Video::TakeFrameBuffer(unsigned width, unsigned height,
   for (unsigned i = 0; i < count; i++) {
     m_pFrameBuffer = new CBcmFrameBuffer(width, height, depths[i], 0, 0, 0, TRUE);
     if (m_pFrameBuffer->Initialize()) {
-      m_nDepth = depths[i];
-      return true;
+      // The depth and size the firmware actually gave, from the pitch and
+      // the buffer's size: the Pi 5's firmware keeps the depth set in
+      // config.txt, and may leave out the second page.
+      unsigned w = m_pFrameBuffer->GetWidth(), h = m_pFrameBuffer->GetHeight();
+      unsigned pitch = m_pFrameBuffer->GetPitch();
+      unsigned bytes = w != 0 ? pitch / w : 0;
+      if ((bytes == 1 || bytes == 2 || bytes == 4) && h != 0) {
+        m_nDepth = bytes * 8;
+        m_nPages = m_pFrameBuffer->GetSize() >= 2ull * h * pitch ? 2 : 1;
+        return true;
+      }
     }
     delete m_pFrameBuffer;
     m_pFrameBuffer = 0;
@@ -147,9 +160,11 @@ bool Pi4Video::Initialize(bool crt, bool smooth, bool curvature, Driver driver) 
   m_nWidth = m_pFrameBuffer->GetWidth();
   m_nHeight = m_pFrameBuffer->GetHeight();
   m_nPitch = m_pFrameBuffer->GetPitch();
-  CLogger::Get()->Write(FromVideo, LogNotice, "Framebuffer %ux%u, %u bit (display %ux%u)",
-                        m_nWidth, m_nHeight, m_nDepth, m_nDisplayWidth,
-                        m_nDisplayHeight);
+  CLogger::Get()->Write(FromVideo, LogNotice,
+                        "Framebuffer %ux%u, %u bit, %u page(s) (display %ux%u), pitch %u, %u bytes at %p",
+                        m_nWidth, m_nHeight, m_nDepth, m_nPages, m_nDisplayWidth,
+                        m_nDisplayHeight, m_nPitch, m_pFrameBuffer->GetSize(), Page(0));
+  FlushStartupLog();
 
   if (m_bFiltered) {
     m_Scaler.SetMode(crt, smooth, curvature);
@@ -165,6 +180,9 @@ bool Pi4Video::Initialize(bool crt, bool smooth, bool curvature, Driver driver) 
   // which stays as the fall back if it can't.
   if (driver != Driver::Firmware) {
     m_pKms = new kms::Display;
+#if RASPPI >= 5
+    m_pKms->SetFramebuffer(Page(0), (size_t)m_nPages * m_nHeight * m_nPitch, m_nPitch);
+#endif
     if (!m_pKms->Attach()) {
       delete m_pKms;
       m_pKms = 0;
@@ -174,6 +192,7 @@ bool Pi4Video::Initialize(bool crt, bool smooth, bool curvature, Driver driver) 
       CLogger::Get()->Write(FromVideo, LogNotice, "Picture by BMCoco's display lists on the HVS");
     }
   }
+  FlushStartupLog();
   // Under the direct display driver the HVS does smooth scaling itself, so
   // the ARM only draws the CRT shader.
   if (m_bFiltered && (m_pKms == 0 || crt)) {
@@ -190,14 +209,14 @@ bool Pi4Video::Initialize(bool crt, bool smooth, bool curvature, Driver driver) 
 
 uint8_t *Pi4Video::Page(unsigned page) const {
   return (uint8_t *)(uintptr)m_pFrameBuffer->GetBuffer() +
-         (size_t)page * m_nHeight * m_nPitch;
+         (size_t)(page % m_nPages) * m_nHeight * m_nPitch;
 }
 
 void Pi4Video::ClearPages(void) {
   // RGB565 0 is black; 32-bit black is opaque.
   uint64_t black = m_nDepth == 32 ? 0xFF000000FF000000ull : 0;
   unsigned long bytes = (unsigned long)m_nHeight * m_nPitch;
-  for (unsigned page = 0; page < 2; page++) {
+  for (unsigned page = 0; page < m_nPages; page++) {
     uint8_t *p = Page(page);
     if (((uintptr)p & 7) == 0 && (bytes & 15) == 0) {
       FillFrameBuffer(p, black, bytes);
@@ -287,6 +306,7 @@ void Pi4Video::SetView(int x, int y, int w, int h, double aspect,
     BuildColumnMap();
   }
   ClearPages();
+  ConfigureGpu();
 }
 
 void Pi4Video::BuildColumnMap(void) {
@@ -313,6 +333,8 @@ void Pi4Video::DrawSharp(uint8_t *page) {
         line16[i] = src[m_pColumn[i]];
       }
     } else {
+      // 32-bit: the firmware's fall back, and the Pi 5's (it gives the
+      // depth set in config.txt).
       uint32_t *line32 = (uint32_t *)line;
       for (unsigned i = 0; i < m_nDestW; i++) {
         line32[i] = Pi4Rgb565ToArgb(src[m_pColumn[i]]);
@@ -378,7 +400,31 @@ void Pi4Video::Present(bool wait_vsync) {
   if (m_pFrameBuffer == 0 || m_pSource == 0) {
     return;
   }
+  v3d::Crt *offered = __atomic_load_n(&m_pGpuOffered, __ATOMIC_ACQUIRE);
+  if (offered != 0 && m_pGpu == 0) {
+    __atomic_store_n(&m_pGpuOffered, (v3d::Crt *)0, __ATOMIC_RELAXED);
+    if (DrawnByArm()) {
+      m_pGpu = offered;
+      m_pGpu->SetMode(m_bCrt, m_bSmooth, m_bCurvature);
+      if (m_pKms != 0 && m_nViewW > 0) {
+        // The picture's size may change with the GPU drawing it.
+        SetViewKms(m_nViewX, m_nViewY, m_nViewW, m_nViewH, m_fKmsAspect, m_fKmsScale);
+      } else {
+        ConfigureGpu();
+      }
+      if (m_pGpu != 0) {
+        CLogger::Get()->Write(FromVideo, LogNotice, "Drawn by the GPU from now on");
+      }
+    } else {
+      CLogger::Get()->Write(FromVideo, LogNotice,
+                            "The GPU isn't needed: this picture isn't drawn by the ARM");
+    }
+  }
   if (m_pKms != 0) {
+    if (m_bKmsResize && m_nViewW > 0) {
+      m_bKmsResize = false;
+      SetViewKms(m_nViewX, m_nViewY, m_nViewW, m_nViewH, m_fKmsAspect, m_fKmsScale);
+    }
     PresentKms(wait_vsync);
     return;
   }
@@ -386,6 +432,11 @@ void Pi4Video::Present(bool wait_vsync) {
   if (!m_bFiltered) {
     if (m_pColumn != 0) {
       DrawSharp(page);
+    }
+  } else if (m_pGpu != 0 && m_bGpuReady) {
+    v3d::Target target = {page, m_nWidth, m_nHeight, m_nPitch};
+    if (!m_pGpu->Draw(m_pSource, target, (int)m_nDestX, (int)m_nDestY)) {
+      DropGpu("drawing failed");
     }
   } else if (m_bScalerReady) {
     if (m_pLine[1] == 0) {
@@ -398,7 +449,10 @@ void Pi4Video::Present(bool wait_vsync) {
 
   // Show the page just drawn, then wait for the vertical blank: after it
   // the other page is off screen and free to draw the next frame into.
-  m_pFrameBuffer->SetVirtualOffset(0, m_nBackPage * m_nHeight);
+  // With one page the frame is drawn where it is shown.
+  if (m_nPages == 2) {
+    m_pFrameBuffer->SetVirtualOffset(0, m_nBackPage * m_nHeight);
+  }
   if (wait_vsync) {
     WaitForVerticalSync();
   }
@@ -441,11 +495,30 @@ void Pi4Video::DisplaySize(int *width, int *height) const {
   *height = (int)m_nDisplayHeight;
 }
 
-bool Pi4Video::MatchRate(double fps, unsigned audio_fs) {
+bool Pi4Video::MatchRate(double fps, unsigned audio_fs, unsigned lines) {
   if (m_pKms == 0 || m_Driver != Driver::Kms) {
     return false;
   }
+#if RASPPI >= 5
+  unsigned width = m_pKms->Width(), height = m_pKms->Height();
+  bool changed = m_pKms->MatchRate(fps, audio_fs, lines);
+  if (m_pKms->Width() != width || m_pKms->Height() != height) {
+    // A new size: the picture is laid out again before the next frame.
+    m_bKmsResize = true;
+  }
+  return changed;
+#else
+  (void)lines;
   return m_pKms->MatchRate(fps, audio_fs);
+#endif
+}
+
+bool Pi4Video::ResolutionChoice(void) const {
+#if RASPPI >= 5
+  return m_pKms != 0 && m_Driver == Driver::Kms;
+#else
+  return false;
+#endif
 }
 
 void Pi4Video::Blank(void) {
@@ -460,7 +533,7 @@ void Pi4Video::Blank(void) {
 }
 
 //
-// The direct display driver (src/pi4kms/).
+// The direct display driver (src/pi4kms/, or src/pi5kms/ on the Pi 5).
 //
 
 // As SetView() does for the framebuffer, on the mode's size: sharp in whole
@@ -477,6 +550,8 @@ void Pi4Video::SetViewKms(int x, int y, int w, int h, double aspect,
   m_nViewY = y;
   m_nViewW = w;
   m_nViewH = h;
+  m_fKmsAspect = aspect;
+  m_fKmsScale = scale;
 
   const unsigned width = m_pKms->Width(), height = m_pKms->Height();
   unsigned dest_h;
@@ -502,14 +577,20 @@ void Pi4Video::SetViewKms(int x, int y, int w, int h, double aspect,
   unsigned src_w = (unsigned)w, src_h = (unsigned)h;
   bool nearest = !m_bSmooth;
   if (m_bCrt) {
-    unsigned max_height = m_bCurvature && m_bSmooth ? 720 : 1080;
+    // The ARM can't draw curved and smooth at more than 720 lines; the GPU
+    // can.
+    unsigned max_height = m_bCurvature && m_bSmooth && m_pGpu == 0 ? 720 : 1080;
     unsigned divide = (dest_h + max_height - 1) / max_height;
     src_w = dest_w / divide;
     src_h = dest_h / divide;
     nearest = true;
-    m_bScalerReady = m_Scaler.Configure((unsigned)m_nSourceWidth, x, y, w, h,
-                                        src_w, src_h);
-    if (!m_bScalerReady) {
+    m_nKmsSrcW = src_w;
+    m_nKmsSrcH = src_h;
+    // While the GPU draws, the ARM's scaler isn't needed (it is set up
+    // again if the ARM takes over).
+    m_bScalerReady = m_pGpu == 0 && m_Scaler.Configure((unsigned)m_nSourceWidth, x, y, w,
+                                                       h, src_w, src_h);
+    if (m_pGpu == 0 && !m_bScalerReady) {
       CLogger::Get()->Write(FromVideo, LogError, "Not enough memory to scale the picture");
       return;
     }
@@ -521,7 +602,9 @@ void Pi4Video::SetViewKms(int x, int y, int w, int h, double aspect,
     delete m_pKms;
     m_pKms = 0;
     SetView(x, y, w, h, aspect, scale);
+    return;
   }
+  ConfigureGpu();
 }
 
 void Pi4Video::PresentKms(bool wait_vsync) {
@@ -530,7 +613,12 @@ void Pi4Video::PresentKms(bool wait_vsync) {
   if (buffer == 0) {
     return;
   }
-  if (m_bCrt) {
+  if (m_bCrt && m_pGpu != 0 && m_bGpuReady) {
+    v3d::Target target = {buffer, m_nKmsSrcW, m_nKmsSrcH, pitch * 4};
+    if (!m_pGpu->Draw(m_pSource, target, 0, 0)) {
+      DropGpu("drawing failed");
+    }
+  } else if (m_bCrt) {
     if (!m_bScalerReady) {
       return;
     }
@@ -550,4 +638,65 @@ void Pi4Video::PresentKms(bool wait_vsync) {
     }
   }
   m_pKms->EndFrame(wait_vsync);
+}
+
+//
+// The 3D GPU (src/pi4v3d/), with the crt_gpu option.
+//
+
+void Pi4Video::UseGpu(v3d::Crt *crt) {
+  __atomic_store_n(&m_pGpuOffered, crt, __ATOMIC_RELEASE);
+}
+
+// The pictures the ARM draws, which the GPU can draw instead: smooth and
+// CRT on the framebuffer (32-bit only), CRT on the HVS.
+bool Pi4Video::DrawnByArm(void) const {
+  if (m_pKms != 0) {
+    return m_bCrt;
+  }
+  return m_bFiltered && m_nDepth == 32;
+}
+
+// After the view changes: the GPU draws the same picture as the scaler, at
+// the same size, into memory it can reach (the first 1 GB).
+void Pi4Video::ConfigureGpu(void) {
+  if (m_pGpu == 0) {
+    return;
+  }
+  m_bGpuReady = false;
+  if (m_nViewW <= 0 || m_nViewH <= 0) {
+    return;  // no view yet
+  }
+  if (!DrawnByArm()) {
+    DropGpu("not needed for this picture");
+    return;
+  }
+  bool ok;
+  if (m_pKms != 0) {
+#if RASPPI >= 5
+    ok = m_pKms->BuffersBelow(v3d::Gpu::MappedBytes) &&
+         m_pGpu->Configure((unsigned)m_nSourceWidth, m_nViewX, m_nViewY, m_nViewW, m_nViewH,
+                           m_nKmsSrcW, m_nKmsSrcH);
+#else
+    ok = m_pGpu->Configure((unsigned)m_nSourceWidth, m_nViewX, m_nViewY, m_nViewW, m_nViewH,
+                           m_nKmsSrcW, m_nKmsSrcH);
+#endif
+  } else {
+    ok = v3d::Gpu::Reachable(Page(0), (size_t)m_nPages * m_nHeight * m_nPitch) &&
+         m_pGpu->Configure((unsigned)m_nSourceWidth, m_nViewX, m_nViewY, m_nViewW, m_nViewH,
+                           m_nDestW, m_nDestH);
+  }
+  if (!ok) {
+    DropGpu("can't draw this picture");
+    return;
+  }
+  m_bGpuReady = true;
+}
+
+void Pi4Video::DropGpu(const char *why) {
+  CLogger::Get()->Write(FromVideo, LogWarning, "Drawn by the ARM, not the GPU: %s", why);
+  m_pGpu = 0;
+  m_bGpuReady = false;
+  // Back to the size the ARM can draw, from the next frame.
+  m_bKmsResize = m_bKmsResize || (m_pKms != 0 && m_bCrt);
 }

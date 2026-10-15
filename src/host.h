@@ -131,16 +131,21 @@ const char *host_model_name(void);
 /* The display's size in pixels. */
 void host_display_size(int *width, int *height);
 /* Asks for the display to refresh at FPS frames a second, where the host
-   can set the video mode (the Pi 4 with video_driver=kms). Returns TRUE if
-   the mode was changed; the refresh rate should then be measured again. */
+   can set the video mode (the Pi 4 and 5 with video_driver=kms). Returns
+   TRUE if the mode was changed; the refresh rate should then be measured
+   again. On the Pi 5 the "resolution" setting (auto, 1920x1080 or
+   1280x720) also chooses the mode's size. */
 int host_display_match_rate(double fps);
+/* TRUE if the "resolution" setting applies (the Pi 5 with
+   video_driver=kms). */
+int host_display_resolution_choice(void);
 /* Writes a line of text to the log. */
 void host_log(const char *message);
 
 /* Where the log goes (enable_logging=off|uart|file). */
 #define HOST_LOG_OFF  0
 #define HOST_LOG_UART 1  /* serial port, GPIO14/15 at 115200 */
-#define HOST_LOG_FILE 2  /* /bmcoco.log on the SD card */
+#define HOST_LOG_FILE 2  /* serial port and /bmcoco.log on the SD card */
 int host_log_destination(void);
 /* Changes it at once. Returns 0 if the log file cannot be opened. */
 int host_set_log_destination(int destination);

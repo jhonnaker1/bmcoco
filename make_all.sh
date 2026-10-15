@@ -3,12 +3,15 @@
 # Builds the third party libraries (circle-stdlib: Circle and newlib, and the
 # Circle addons) and then the BMCoco kernel for one board:
 #
-#   ./make_all.sh [pi2|pi3|pi4] [--skip-patches]
+#   ./make_all.sh [pi0|pi2|pi3|pi4|pi5] [--skip-patches]
 #
 #   pi3 (default)  kernel8-32.img: Pi 3 and Pi Zero 2 W
 #   pi2            kernel7.img: Pi 2
+#   pi0            kernel.img: Pi Zero and Zero W (one core)
 #   pi4            kernel8-rpi4.img: Pi 4 B and Pi 400, 64-bit, with
 #                  armstub8-rpi4.bin (see docs/PI4.md)
+#   pi5            kernel_2712.img: Pi 5, Pi 500 and Pi 500+, 64-bit (see
+#                  docs/PI5.md)
 #
 # --skip-patches leaves Circle as it is instead of resetting it and applying
 # src/patches/ again.
@@ -28,21 +31,29 @@ SKIP_PATCHES=0
 for arg in "$@"
 do
     case "$arg" in
-        pi2|pi3|pi4) BOARD=$arg ;;
+        pi0|pi2|pi3|pi4|pi5) BOARD=$arg ;;
         --skip-patches) SKIP_PATCHES=1 ;;
-        *) echo "Usage: $0 [pi2|pi3|pi4] [--skip-patches]" >&2; exit 1 ;;
+        *) echo "Usage: $0 [pi0|pi2|pi3|pi4|pi5] [--skip-patches]" >&2; exit 1 ;;
     esac
 done
 BOARD=${BOARD:-pi3}
 RASPI=${BOARD#pi}
-# The Pi 4 build is 64-bit (AArch64). Circle names its kernel
-# kernel8-rpi4.img (TARGET in Circle's Rules.mk for RASPPI=4, AARCH=64).
+# The Pi Zero is Circle's (and the firmware's) Raspberry Pi 1.
+if [ "$RASPI" = "0" ]
+then
+    RASPI=1
+fi
+# The Pi 4 and 5 builds are 64-bit (AArch64). Circle names their kernels
+# kernel8-rpi4.img and kernel_2712.img (TARGET in Circle's Rules.mk for
+# RASPPI=4 and 5, AARCH=64).
 case "$RASPI" in
+    1) KERNEL=kernel.img ;;
     2) KERNEL=kernel7.img ;;
     3) KERNEL=kernel8-32.img ;;
     4) KERNEL=kernel8-rpi4.img ;;
+    5) KERNEL=kernel_2712.img ;;
 esac
-if [ "$RASPI" = "4" ]
+if [ "$RASPI" -ge 4 ]
 then
     export BMCOCO_AARCH=64
     CONFIGURE_PREFIX=(-p aarch64-none-elf-)
@@ -158,9 +169,10 @@ echo "=============================================================="
 echo "BUILD ADDONS"
 echo "=============================================================="
 # The Pi 2 and 3 show the picture and play sound through the VideoCore
-# (VCHIQ: dispmanx and the audio service). The Pi 4 build uses Circle's own
-# framebuffer and HDMI sound drivers instead and doesn't need those addons.
-if [ "$RASPI" = "4" ]
+# (VCHIQ: dispmanx and the audio service). The Pi 4 and 5 builds use
+# Circle's own framebuffer and HDMI sound drivers instead and don't need
+# those addons.
+if [ "$RASPI" -ge 4 ]
 then
     ADDONS="fatfs wlan wlan/hostap/wpa_supplicant"
 else

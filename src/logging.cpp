@@ -18,7 +18,7 @@
 CLogDevice::CLogDevice(CDevice *pSerial)
     : m_pSerial(pSerial), m_Destination(HOST_LOG_UART), m_pFile(0),
       m_QueueRead(0), m_QueueWrite(0), m_QueueLength(0), m_Dropped(0),
-      m_LastSync(0) {}
+      m_LastSync(0), m_bUnsynced(false) {}
 
 bool CLogDevice::SetDestination(int destination) {
   if (destination == m_Destination) {
@@ -46,31 +46,47 @@ bool CLogDevice::SetDestination(int destination) {
 }
 
 int CLogDevice::Write(const void *pBuffer, size_t nCount) {
-  switch (m_Destination) {
-  case HOST_LOG_UART:
-    return m_pSerial->Write(pBuffer, nCount);
-  case HOST_LOG_FILE: {
-    const char *p = static_cast<const char *>(pBuffer);
-    m_Lock.Acquire();
-    for (size_t i = 0; i < nCount; i++) {
-      if (m_QueueLength == QUEUE_SIZE) {
-        m_Dropped += nCount - i;
-        break;
-      }
-      m_Queue[m_QueueWrite] = p[i];
-      m_QueueWrite = (m_QueueWrite + 1) % QUEUE_SIZE;
-      m_QueueLength = m_QueueLength + 1;
+  int destination = m_Destination;
+  if (destination == HOST_LOG_UART || destination == HOST_LOG_FILE) {
+    m_pSerial->Write(pBuffer, nCount);
+  }
+  if (destination == HOST_LOG_FILE) {
+    WriteFile(pBuffer, nCount);
+  }
+  return (int)nCount;
+}
+
+void CLogDevice::WriteFile(const void *pBuffer, size_t nCount) {
+  if (m_Destination != HOST_LOG_FILE) {
+    return;
+  }
+  const char *p = static_cast<const char *>(pBuffer);
+  m_Lock.Acquire();
+  for (size_t i = 0; i < nCount; i++) {
+    if (m_QueueLength == QUEUE_SIZE) {
+      m_Dropped += nCount - i;
+      break;
     }
-    m_Lock.Release();
-    return (int)nCount;
+    m_Queue[m_QueueWrite] = p[i];
+    m_QueueWrite = (m_QueueWrite + 1) % QUEUE_SIZE;
+    m_QueueLength = m_QueueLength + 1;
   }
-  default:
-    return (int)nCount;
-  }
+  m_Lock.Release();
 }
 
 void CLogDevice::Drain(void) {
-  if (m_pFile == 0 || (m_QueueLength == 0 && m_Dropped == 0)) {
+  if (m_pFile == 0) {
+    return;
+  }
+  if (m_QueueLength == 0 && m_Dropped == 0) {
+    // Nothing more to write: what was written goes to the card half a
+    // second later, so the last lines aren't lost at power off.
+    if (m_bUnsynced && CTimer::GetClockTicks() - m_LastSync >= CLOCKHZ / 2) {
+      if (sd_sync(m_pFile) == SD_OK) {
+        m_bUnsynced = false;
+      }
+      m_LastSync = CTimer::GetClockTicks();
+    }
     return;
   }
 
@@ -98,14 +114,26 @@ void CLogDevice::Drain(void) {
   }
   // Push it to the card every few seconds: the Pi can be switched off at
   // any time.
+  m_bUnsynced = true;
   if (ok && CTimer::GetClockTicks() - m_LastSync >= 3 * CLOCKHZ) {
     ok = sd_sync(m_pFile) == SD_OK;
+    m_bUnsynced = !ok;
     m_LastSync = CTimer::GetClockTicks();
   }
   if (!ok) {
     m_Destination = HOST_LOG_OFF;
     sd_close(m_pFile);
     m_pFile = 0;
+  }
+}
+
+void CLogDevice::Flush(void) {
+  while (m_pFile != 0 && (m_QueueLength != 0 || m_Dropped != 0)) {
+    Drain();
+  }
+  if (m_pFile != 0 && sd_sync(m_pFile) == SD_OK) {
+    m_LastSync = CTimer::GetClockTicks();
+    m_bUnsynced = false;
   }
 }
 

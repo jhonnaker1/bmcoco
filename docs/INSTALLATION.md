@@ -2,8 +2,10 @@
 
 ## What you need
 
-- A Raspberry Pi 3 Model B, B+ or A+, a Raspberry Pi Zero 2 W, or a
-  Raspberry Pi 2 Model B
+- A Raspberry Pi 3 Model B, B+ or A+, a Raspberry Pi Zero 2 W, a
+  Raspberry Pi 2 Model B, a Raspberry Pi 4 Model B or Pi 400, a Raspberry
+  Pi 5, Pi 500 or Pi 500+, or a Raspberry Pi Zero or Zero W (slower: see
+  the User Guide)
 - A microSD card (any size; BMCoco itself needs only a few MB)
 - An HDMI display, ideally one that accepts 720p at 60 Hz
 - Your own Color Computer ROM images (see below)
@@ -77,6 +79,6 @@ changed: `config.txt` and `cmdline.txt` if you edited them. Your settings
 files are not in the release zip and stay as they are.
 
 With networking on, a new kernel (`kernel8-32.img` for a Pi 3 or Zero 2 W,
-`kernel7.img` for a Pi 2) can also be uploaded in the web UI's file manager
+`kernel7.img` for a Pi 2, `kernel.img` for a Pi Zero or Zero W) can also be uploaded in the web UI's file manager
 and started with **Reboot**. Updates that change other files (the Pi
 firmware in the root or in `firmware/`) need the card in a computer.

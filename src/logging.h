@@ -2,7 +2,8 @@
 // logging.h
 //
 // Where the log (Circle's logger and stdio, so XRoar's messages too)
-// goes: the serial port (UART), /bmcoco.log on the SD card, or nowhere.
+// goes: the serial port (UART), the serial port and /bmcoco.log on the
+// SD card (file), or nowhere.
 // Set with enable_logging=off|uart|file, as in BMC64, or in the menu.
 // Based on BMC64's CLoggingDevice (third_party/common/menu_logging_device.cpp).
 //
@@ -21,6 +22,11 @@
 
 #define LOG_FILE "/bmcoco.log"
 
+// During start up, writes the log to the card now if it goes to the file
+// (see CLogDevice::Flush()); afterwards does nothing. Implemented by the
+// kernel.
+void FlushStartupLog(void);
+
 class CLogDevice : public CDevice {
 public:
   CLogDevice(CDevice *pSerial);
@@ -33,9 +39,14 @@ public:
 
   // Any core, also from interrupts. For the file the text is queued.
   int Write(const void *pBuffer, size_t nCount) override;
+  // Queues text for the file only.
+  void WriteFile(const void *pBuffer, size_t nCount);
 
   // Writes queued text to the file. Core 1 only (FatFs).
   void Drain(void);
+  // Writes everything queued to the card, for start up (on core 0, before
+  // core 1 uses FatFs), so a start up that stops leaves its log.
+  void Flush(void);
   // Writes everything queued and closes the file, before a reboot.
   void Close(void);
 
@@ -53,6 +64,7 @@ private:
   volatile unsigned m_QueueLength;
   unsigned m_Dropped;
   unsigned m_LastSync;
+  bool m_bUnsynced;          // written to the file since the last sync
 };
 
 #endif

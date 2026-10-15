@@ -23,7 +23,13 @@ static const unsigned QUEUE_MS = 200;
 
 // 2 x 384 samples: 384 stereo frames, 8 ms at 48 kHz, per DMA transfer.
 // Circle's default is ten times that, which would add 80 ms of delay.
+// The Pi 5's HDMI plays 8 ms transfers slightly slow (about 47.8 kHz),
+// which roughens the sound; 1536 frames (32 ms) play at 48 kHz.
+#if RASPPI >= 5
+static const unsigned CHUNK_SIZE = 1536 * 2;
+#else
 static const unsigned CHUNK_SIZE = 384 * 2;
+#endif
 
 Pi4Sound::Pi4Sound(void)
     : m_pDevice(0), m_nChannels(1), m_nLatency(0), m_nGain(256) {}
@@ -58,9 +64,13 @@ bool Pi4Sound::Initialize(CInterruptSystem *pInterrupt, int volume, Output outpu
   }
   m_nGain = volume * 256 / 100;
 
+#if RASPPI >= 5
+  bool has_jack = false;
+#else
   bool has_jack = CMachineInfo::Get()->GetMachineModel() != MachineModel400;
+#endif
   if (output == Output::Headphones && !has_jack) {
-    CLogger::Get()->Write(FromSound, LogWarning, "The Pi 400 has no headphone jack; sound goes to HDMI");
+    CLogger::Get()->Write(FromSound, LogWarning, "No headphone jack; sound goes to HDMI");
     output = Output::Hdmi;
   }
 

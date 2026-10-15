@@ -8,8 +8,8 @@ seconds and can be switched off at any time.
 
 | File or folder   | What it is                                                  |
 |------------------|-------------------------------------------------------------|
-| `kernel8-32.img`, `kernel7.img`, `kernel8-rpi4.img` | BMCoco for the Pi 3 / Zero 2 W, the Pi 2, and the Pi 4 / Pi 400 |
-| `bootcode.bin`, `start.elf`, `fixup.dat`, `start4.elf`, `fixup4.dat`, `armstub8-rpi4.bin`, `*.dtb` | Raspberry Pi firmware |
+| `kernel8-32.img`, `kernel7.img`, `kernel.img`, `kernel8-rpi4.img`, `kernel_2712.img` | BMCoco for the Pi 3 and Zero 2 W, the Pi 2, the Pi Zero and Zero W, the Pi 4 and Pi 400, and the Pi 5, 500 and 500+ |
+| `bootcode.bin`, `start.elf`, `fixup.dat`, `start4.elf`, `fixup4.dat`, `armstub8-rpi4.bin`, `*.dtb`, `overlays/` | Raspberry Pi firmware |
 | `config.txt`     | Raspberry Pi firmware settings: the display mode            |
 | `cmdline.txt`    | BMCoco's options (see Options)                              |
 | `bmcoco.cfg`     | Settings changed in the menu (written by BMCoco)            |
@@ -64,14 +64,14 @@ next item starting with it.
 | Machine        | CoCo 1, 2 or 3, PAL or NTSC, with or without a 6309, and the other machines XRoar emulates. Machines without ROMs are marked |
 | Memory         | The machine's RAM: 128K, 512K, 1M or 2M for a CoCo 3, 4K to 64K for a CoCo 1 or 2 (or a Dragon). The machine is reset with it, and it is kept for that machine |
 | Joysticks      | What is plugged into each joystick port, which gamepad is which joystick, GPIO joysticks, and a joystick test |
-| Video          | TV input (composite with artifact colours, S-Video, or RGB for the CoCo 3), the artifact colour renderer, how much border to show, the frame lock, CRT effect and smooth scaling |
+| Video          | TV input (composite with artifact colours, S-Video, or RGB for the CoCo 3), the artifact colour renderer, how much border to show, the frame lock, the resolution (Pi 5), the CRT effect and its curvature, smooth scaling |
 | Keyboard       | Typed characters on or off, and the PC keyboard's layout |
 | Sound          | Volume, and HDMI or the headphone jack |
 | Network        | Ethernet or Wi-Fi, the web UI (see below), and the DriveWire server for the Becker port |
 | Turbo          | Run as fast as the Pi can (also F11) |
 | Reset, Hard Reset | The reset button (F10), or power off and on (Shift+F10) |
-| About          | Versions, the machine, ROM status, display and network |
-| Reboot, Shut Down | Restart BMCoco, or halt the Pi. Shut Down also from a keyboard's power key: Fn+F10 on a Pi 400, which switches off; Fn+F10 starts it again |
+| About          | Versions, the machine, ROM status, display, load and network |
+| Reboot, Shut Down | Restart BMCoco, or halt the Pi. Shut Down also from a keyboard's power key (Fn+F10 on a Pi 400, which switches off; Fn+F10 starts it again) or the Pi 5's power button |
 
 Settings changed in the menu are kept in `bmcoco.cfg` and used at the next
 boot.
@@ -296,21 +296,23 @@ web UI.
 | `smooth`            | `0`, `1`                     | `0`      | Bilinear filtering instead of sharp pixels |
 | `crt_shader`        | `0`, `1`                     | `0`      | CRT look (scanlines) from BMC64 |
 | `crt_curvature`     | `0`, `1`                     | `0`      | With `crt_shader`, a curved screen |
+| `crt_gpu`           | `0`, `1`                     | `1`      | Pi 4 and 5: the 3D GPU draws the smooth and CRT pictures; `0` has the ARM draw them (see [PI4.md](PI4.md)) |
 | `vsync`             | `auto`, `on`, `off`          | `auto`   | Lock frames to the display (see Display and timing) |
-| `video_driver`      | `kms`, `hvs`, `firmware`     | `kms`    | Pi 4 only: `kms` runs the display at the CoCo's exact frame rate; `hvs` leaves the mode set in `config.txt`; `firmware` uses the firmware's framebuffer, if the others give trouble (see [PI4.md](PI4.md)) |
+| `resolution`        | `auto`, `1920x1080`, `1280x720` | `auto` | Pi 5 only, with `video_driver=kms`: the display's resolution; `auto` keeps the one the firmware chose (the Pi 5's firmware ignores `hdmi_mode`) |
+| `video_driver`      | `kms`, `hvs`, `firmware`     | `kms`    | Pi 4 and 5: `kms` runs the display at the CoCo's exact frame rate; `hvs` leaves the mode set in `config.txt`; `firmware` uses the firmware's framebuffer, if the others give trouble (see [PI4.md](PI4.md) and [PI5.md](PI5.md)) |
 | `audio_out`         | `auto`, `hdmi`, `headphones` | `auto`   | Where the sound goes (`auto`: HDMI, or the headphone jack if the display takes no sound) |
 | `volume`            | 0 to 100                     | `70`     | Sound volume |
 | `audio_buffer_ms`   | 20 to 500                    | `60`     | Sound buffer; raise it if the sound breaks up |
 | `keyboard`          | `us`, `gb`, `de`, `fr`, ... (XRoar's `-kbd-lang`) | `us` | PC keyboard layout |
 | `typed_keys`        | `0`, `1`                     | `1`      | Keys type the characters printed on them (see Keyboard) |
-| `joy_right`, `joy_left` | `joy0`, `joy1`, `kjoy0` (arrow keys) | `joy0`, `joy1` | What is plugged into each joystick port |
+| `joy_right`, `joy_left` | `joy0`, `joy1`, `kjoy0` (arrow keys), `mjoy0` (mouse) | `joy0`, `joy1` | What is plugged into each joystick port |
 | `joy1_pad`, `joy2_pad` | `0` automatic, `1`-`4` a gamepad, `-1` none | `0` | Gamepad for Joystick 1 and 2 |
 | `mouse_speed`       | percent                      | `100`    | How far the mouse moves the pointer (see Joysticks) |
 | `ram_NAME`          | K, e.g. `ram_coco3=2048`     | machine's | The RAM of machine NAME (the menu's *Memory*) |
 | `hd0`, `hd1`, `hd_cart` | paths, a cartridge name  | none     | Hard disk images and their cartridge (the menu's *Hard Disks*) |
 | `becker_ip`, `becker_port` | address, port         | `127.0.0.1`, `65504` | The Becker port's DriveWire server |
 | `gpio_joysticks`    | `0`, `1`                     | `0`      | Joysticks on the GPIO header |
-| `enable_logging`    | `off`, `uart`, `file`        | `uart`   | Where the log goes (see Logging) |
+| `enable_logging`    | `off`, `uart`, `file`        | `off`    | Where the log goes (see Logging) |
 | `network`           | `off`, `ethernet`, `wifi`    | `off`    | Networking (see Networking and the web UI) |
 | `webui`             | `0`, `1`                     | `1`      | Web UI when networking is on |
 | `webui_pin`         | digits                       | none     | PIN for the web UI |
@@ -328,14 +330,15 @@ the version, the display and sound set up, gamepads coming and going,
 network status, and XRoar's own messages (which ROMs it found, disks
 inserted). Choose where it goes with `enable_logging` in `cmdline.txt`:
 
-- **UART** (the default): the serial port, GPIO14 TX and GPIO15 RX at
-  115200 baud. Needs a USB serial adapter.
-- **File**: `bmcoco.log` in the root of the SD card. It starts with what
-  was logged since boot, is written to the card every few seconds, and
-  starts again at boot once it is over 1 MB. Download it from the web UI's
-  file manager to send with a bug report. Writing it costs a little time
-  on each frame, so switch it off once you have what you need.
-- **Off**: nothing is logged.
+- **Off** (the default, also when `enable_logging` isn't set): no log.
+- **UART**: the serial port, GPIO14 TX and GPIO15 RX at 115200 baud
+  (all boards, the Pi 5 too). Needs a USB serial adapter.
+- **File**: the serial port, and `bmcoco.log` in the root of the SD card.
+  The file starts with what was logged since boot, is written to the card
+  every few seconds (and is complete after a crash, a hang or switching
+  off), and starts again at boot once it is over 1 MB. Download it from
+  the web UI's file manager to send with a bug report. Writing it costs a
+  little time on each frame, so switch it off once you have what you need.
 
 ## Troubleshooting
 

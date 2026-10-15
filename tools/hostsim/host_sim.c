@@ -644,12 +644,17 @@ int host_display_match_rate(double fps)
 	return 0;
 }
 
+int host_display_resolution_choice(void)
+{
+	return 0;
+}
+
 void host_log(const char *message)
 {
 	fprintf(stderr, "[log] %s\n", message);
 }
 
-static int log_destination = HOST_LOG_UART;
+static int log_destination = HOST_LOG_OFF;
 
 int host_log_destination(void)
 {

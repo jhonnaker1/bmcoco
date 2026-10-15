@@ -1,8 +1,8 @@
 # BMCoco
 
-BMCoco is a bare metal Tandy Color Computer emulator for the Raspberry Pi 2,
-3 and 4. It runs the [XRoar](https://www.6809.org.uk/xroar/) emulator directly
-on the hardware, with no Linux underneath, the same way
+BMCoco is a bare metal Tandy Color Computer emulator for the Raspberry Pi
+Zero, 2, 3, 4 and 5. It runs the [XRoar](https://www.6809.org.uk/xroar/)
+emulator directly on the hardware, with no Linux underneath, the same way
 [BMC64](https://github.com/randyrossi/bmc64) does for the Commodore 64 and
 [BMA800XL](https://github.com/aminch/bma800xl) for the Atari 800XL.
 
@@ -53,6 +53,12 @@ The Raspberry Pi 4 Model B and Pi 400 (`kernel8-rpi4.img`, 64-bit) are
 supported too, with the display run at the CoCo's exact refresh rate on either
 HDMI port, and sound over HDMI or the Pi 4 B's 3.5mm jack. See
 [docs/PI4.md](docs/PI4.md). (Pi 4 support comes from BMA800XL 1.1.0.)
+
+The Raspberry Pi 5, Pi 500 and Pi 500+ (`kernel_2712.img`, 64-bit) are
+supported too. See [docs/PI5.md](docs/PI5.md).
+
+The Raspberry Pi Zero and Zero W (`kernel.img`) work like the Pi 2 and 3,
+with everything on their one core.
 
 ## Getting started
 

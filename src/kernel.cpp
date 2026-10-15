@@ -18,14 +18,20 @@
 #include <circle/bcmpropertytags.h>
 #include <circle/bcmwatchdog.h>
 #include <circle/machineinfo.h>
+#include <circle/memio.h>
+#if RASPPI >= 5
+#include <circle/bcm2712.h>
+#endif
 #include <circle/startup.h>
 #include <circle/synchronize.h>
 #include <circle/usb/usbhid.h>
 #include <circle_glue.h>
 
 extern "C" {
-// The emulator's entry point, in src/port/platform.c. Runs on core 1.
+// From src/port/platform.c: the emulator's entry point, which runs on core
+// 1, and its Reboot / Shut Down request.
 void bmcoco_main(void);
+void bmcoco_request_power(int power_off);
 }
 
 static const char FromKernel[] = "bmcoco";
@@ -56,6 +62,8 @@ static inline void Core1Beat(const char *stage) {
   s_Core1Stage = stage;
   s_Core1Beat = s_Core1Beat + 1;
 }
+
+#ifdef ARM_ALLOW_MULTI_CORE
 
 //
 // CEmulatorCore
@@ -90,19 +98,42 @@ void CEmulatorCore::Run(unsigned nCore) {
   }
 }
 
+#else
+
+//
+// CUSBPlugAndPlayTask
+//
+
+void CUSBPlugAndPlayTask::Run(void) {
+  for (;;) {
+    CKernel::Get()->UpdateUSBPlugAndPlay();
+    CScheduler::Get()->MsSleep(100);
+  }
+}
+
+#endif
+
 //
 // CKernel
 //
 
 CKernel::CKernel(void)
-    : mLog(&mSerial), mTimer(&mInterrupt), mLogger(mKernelOptions.GetLogLevel(), &mTimer),
+    :
+#if RASPPI >= 5
+      // Circle's default on the Pi 5 is the 3-pin debug connector, which
+      // the Pi 500 lacks; device 0 is GPIO14/15, as on the other boards.
+      mSerial(0, FALSE, 0),
+#endif
+      mLog(&mSerial), mTimer(&mInterrupt), mLogger(mKernelOptions.GetLogLevel(), &mTimer),
       mGPIOManager(&mInterrupt),
 #if RASPPI <= 3
       mVCHIQ(CMemorySystem::Get(), &mInterrupt),
 #endif
       mEMMC(&mInterrupt, &mTimer, &mActLED),
       mUSBHCI(&mInterrupt, &mTimer, TRUE), mConsole(&mSerial, &mLog),
+#ifdef ARM_ALLOW_MULTI_CORE
       mEmulatorCore(CMemorySystem::Get()),
+#endif
 #if RASPPI <= 3
       mSound(0), mSoundChannels(0), mVolume(VCHIQ_SOUND_VOLUME_DEFAULT),
       mAudioOut(VCHIQSoundDestinationAuto),
@@ -146,6 +177,7 @@ bool CKernel::Initialize(void) {
   if (!mLogger.Initialize(&mLog)) {
     return false;
   }
+  mLogger.RegisterPanicHandler(PanicHandler);
   mLogger.Write(FromKernel, LogNotice, "BMCoco " BMCOCO_VERSION " (" BMCOCO_GIT
                 ", XRoar " XROAR_VERSION ")");
 
@@ -170,25 +202,28 @@ bool CKernel::Initialize(void) {
   // Settings saved by the BMCoco menu win over cmdline.txt.
   mOptions.LoadSettings("SD:/bmcoco.cfg");
 
-  // Until here the log went to the serial port.
-  const char *logging = mOptions.Get("enable_logging", "uart");
-  if (strcmp(logging, "off") == 0) {
-    SetLogDestination(HOST_LOG_OFF);
-  } else if (strcmp(logging, "file") == 0) {
+  // Until here the log went to the serial port. No setting means no log.
+  const char *logging = mOptions.Get("enable_logging", "off");
+  if (strcmp(logging, "file") == 0) {
     SetLogDestination(HOST_LOG_FILE);
+  } else if (strcmp(logging, "uart") != 0) {
+    SetLogDestination(HOST_LOG_OFF);
   }
   if (!mConsole.Initialize()) {
     return false;
   }
   CGlueStdioInit(mConsole);
+  mLog.Flush();
 
   // Before USB, as BMC64 does: the Pi 3's Ethernet is a USB device and
   // joins the network stack once USB finds it.
   NetworkInitialize(&mOptions);
+  mLog.Flush();
 
   if (!mUSBHCI.Initialize()) {
     return false;
   }
+  mLog.Flush();
 
   const char *audio_out = mOptions.Get("audio_out", "auto");
 
@@ -218,8 +253,10 @@ bool CKernel::Initialize(void) {
                          mOptions.GetBool("crt_curvature", false), driver)) {
     return false;
   }
+  mLog.Flush();
   // Without sound the emulator still runs.
   mPi4Sound.Initialize(&mInterrupt, volume, sound_output);
+  mLog.Flush();
 #else
   if (strcmp(audio_out, "hdmi") == 0) {
     mAudioOut = VCHIQSoundDestinationHDMI;
@@ -238,15 +275,56 @@ bool CKernel::Initialize(void) {
     SetupGPIOJoysticks();
   }
 
-  return mEmulatorCore.Initialize();
+#ifdef ARM_ALLOW_MULTI_CORE
+  bool ok = mEmulatorCore.Initialize();
+#else
+  bool ok = true;
+#endif
+  mLog.Flush();
+  return ok;
+}
+
+void CKernel::UpdateUSBPlugAndPlay(void) {
+  if (mUSBHCI.UpdatePlugAndPlay()) {
+    SetupUSBKeyboards();
+    SetupUSBGamePads();
+    SetupUSBMouse();
+  }
 }
 
 TShutdownMode CKernel::Run(void) {
   SetupUSBKeyboards();
   SetupUSBGamePads();
   SetupUSBMouse();
+  mLog.Flush();
+  mStarting = false;
 
+#ifndef ARM_ALLOW_MULTI_CORE
+  // One core (the Pi Zero): the emulator runs here and yields once a frame,
+  // which lets the USB task and Circle's other tasks run.
+  new CUSBPlugAndPlayTask;
+  bmcoco_main();
+  return ShutdownHalt;
+#else
   mEmulatorCore.Launch();
+
+#if RASPPI >= 4
+  // The 3D GPU draws the smooth and CRT pictures instead of the ARM (unless
+  // crt_gpu=0 in cmdline.txt; crt_gpu_test=1 also checks its pictures
+  // against the ARM's). Started here, with the emulator running on core 1,
+  // which also writes the log.
+  if (mOptions.GetBool("crt_gpu", true) && mGpu.Initialize() && mGpu.ClearTest() &&
+      mRenderer.Initialize(&mGpu, 4096, 2160) &&
+      mCrt.Initialize(&mGpu, &mRenderer, 384, 288)) {
+    bool ok = true;
+    if (mOptions.GetBool("crt_gpu_test", false)) {
+      ok = mRenderer.CopyTest() && mCrt.Test();
+    }
+    if (ok) {
+      mVideo.UseGpu(&mCrt);
+    }
+  }
+#endif
 
   // Core 0 only looks after USB devices coming and going, and watches that
   // the emulator on core 1 keeps going. Interrupts keep being handled here.
@@ -254,11 +332,7 @@ TShutdownMode CKernel::Run(void) {
   unsigned last_change = CTimer::GetClockTicks();
   bool stalled = false;
   for (;;) {
-    if (mUSBHCI.UpdatePlugAndPlay()) {
-      SetupUSBKeyboards();
-      SetupUSBGamePads();
-      SetupUSBMouse();
-    }
+    UpdateUSBPlugAndPlay();
 
     unsigned beat = s_Core1Beat;
     unsigned now = CTimer::GetClockTicks();
@@ -275,13 +349,54 @@ TShutdownMode CKernel::Run(void) {
                     "Emulator has not moved for 3 s; last seen: %s",
                     (const char *)s_Core1Stage);
       stalled = true;
+      // Core 1 writes the log file; while it is stuck (other than in the
+      // file system), core 0 writes it, so the log shows where.
+      if (strcmp((const char *)s_Core1Stage, "writing the log file") != 0) {
+        mLog.Flush();
+      }
     }
+#if RASPPI >= 5
+    CheckPowerButton();
+#endif
 
     asm volatile("wfi");
   }
 
   return ShutdownHalt;
+#endif
 }
+
+#if RASPPI >= 5
+// The Pi 5's power button, and the Pi 500's power key, as Shut Down: GPIO
+// 20 of the BCM2712's own GPIO block ("gio", Circle's ARM_GPIO1_BASE),
+// low while pressed, held for 50 ms (the device trees' debounce time). It
+// counts only once it has been seen released.
+// Sources: Raspberry Pi Linux device trees, bcm2712-rpi-5-b.dts
+// (pwr_button: gpio-keys, KEY_POWER, <&gio 20 GPIO_ACTIVE_LOW>,
+// debounce-interval 50, pull-up) and bcm2712-rpi-500.dts (the same key);
+// bcm2712.dtsi (gio at 0x7D508500); Circle, include/circle/bcm2712.h
+// (ARM_GPIO1_DATA0, the first bank's levels).
+void CKernel::CheckPowerButton(void) {
+  const u32 Button = 1u << 20;
+  bool down = (read32(ARM_GPIO1_DATA0) & Button) == 0;
+  unsigned now = CTimer::GetClockTicks();
+  if (!down) {
+    m_bPowerButtonSeenUp = true;
+    m_nPowerButtonDown = 0;
+    return;
+  }
+  if (!m_bPowerButtonSeenUp) {
+    return;
+  }
+  if (m_nPowerButtonDown == 0) {
+    m_nPowerButtonDown = now | 1;
+  } else if (now - m_nPowerButtonDown >= CLOCKHZ / 20) {
+    mLogger.Write(FromKernel, LogNotice, "Power button: Shut Down");
+    bmcoco_request_power(1);
+    m_bPowerButtonSeenUp = false;
+  }
+}
+#endif
 
 //
 // USB keyboards
@@ -698,10 +813,20 @@ void CKernel::DisplaySize(int *width, int *height) {
 
 bool CKernel::DisplayMatchRate(double fps) {
   Core1Beat("setting the video mode");
-  bool changed = mVideo.MatchRate(fps, Pi4Sound::SAMPLE_RATE);
+  // The Pi 5's firmware ignores hdmi_mode: the size is chosen here.
+  unsigned lines = 0;
+  const char *resolution = mOptions.Get("resolution", "auto");
+  if (strcmp(resolution, "1920x1080") == 0) {
+    lines = 1080;
+  } else if (strcmp(resolution, "1280x720") == 0) {
+    lines = 720;
+  }
+  bool changed = mVideo.MatchRate(fps, Pi4Sound::SAMPLE_RATE, lines);
   Core1Beat("emulating");
   return changed;
 }
+
+bool CKernel::DisplayResolutionChoice(void) { return mVideo.ResolutionChoice(); }
 
 void CKernel::VideoPresent(int wait_vsync) {
   // Let Circle's tasks (the network, the web UI) run once per frame.
@@ -789,6 +914,8 @@ bool CKernel::DisplayMatchRate(double fps) {
   (void)fps; // The mode is the firmware's (config.txt).
   return false;
 }
+
+bool CKernel::DisplayResolutionChoice(void) { return false; }
 
 void CKernel::VideoPresent(int wait_vsync) {
   // Let Circle's tasks (VCHIQ in particular) run once per frame.
@@ -878,7 +1005,9 @@ void CKernel::PowerOff(void) {
   // bcm2835_power_off). The Pi 4 B's bootloader then halts, waking on
   // GPIO3 (WAKE_ON_GPIO=1, its default; with 0 and POWER_OFF_ON_HALT=1 it
   // switches its outputs off); the Pi 400's switches off, and its power key
-  // turns it back on (rpi-eeprom firmware-2711/release-notes.md). Circle:
+  // turns it back on (rpi-eeprom firmware-2711/release-notes.md). The Pi 5,
+  // 500 and 500+ halt until their power button or key is pressed (Raspberry
+  // Pi documentation, "Raspberry Pi 5 power button"). Circle:
   // CBcmWatchdog.
   CBcmWatchdog watchdog;
   watchdog.Restart(CBcmWatchdog::PartitionHalt);
@@ -891,6 +1020,17 @@ void CKernel::PowerOff(void) {
 #endif
 }
 
+// A crash during start up: the log so far, with the crash report, goes to
+// the card before the Pi halts.
+void CKernel::PanicHandler(void) { FlushStartupLog(); }
+
+void FlushStartupLog(void) {
+  CKernel *kernel = CKernel::Get();
+  if (kernel != 0 && kernel->mStarting) {
+    kernel->mLog.Flush();
+  }
+}
+
 bool CKernel::SetLogDestination(int destination) {
   if (!mLog.SetDestination(destination)) {
     mSerial.Write("Cannot open " LOG_FILE "\n", sizeof("Cannot open " LOG_FILE "\n") - 1);
@@ -901,7 +1041,7 @@ bool CKernel::SetLogDestination(int destination) {
     char text[512];
     int len;
     while ((len = mLogger.Read(text, sizeof text)) > 0) {
-      mLog.Write(text, len);
+      mLog.WriteFile(text, len);
     }
   }
   return true;
@@ -948,6 +1088,10 @@ void host_display_size(int *width, int *height) {
 
 int host_display_match_rate(double fps) {
   return CKernel::Get()->DisplayMatchRate(fps) ? 1 : 0;
+}
+
+int host_display_resolution_choice(void) {
+  return CKernel::Get()->DisplayResolutionChoice() ? 1 : 0;
 }
 
 void host_network_status(char *text, unsigned size) {

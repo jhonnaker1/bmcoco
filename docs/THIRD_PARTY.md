@@ -36,6 +36,14 @@ See the [Raspberry Pi firmware repository](https://github.com/raspberrypi/firmwa
 
 BMCoco uses the crt-pi CRT shader by davej, as included in BMC64, under the [GNU General Public License version 2 or later](https://www.gnu.org/licenses/old-licenses/gpl-2.0.html).
 
+## Mesa
+
+For the 3D GPU of the Raspberry Pi 4 and Pi 5, BMA800XL adapts parts of the [Mesa 3D graphics library](https://mesa3d.org/)'s Broadcom V3D drivers (`src/pi4v3d/`, `tools/v3dshader/`), under the MIT license. The GPU shaders are compiled with Mesa 25.2.8's V3D compiler.
+
+## Linux
+
+For the 3D GPU of the Raspberry Pi 4 and Pi 5, BMA800XL adapts parts of the Linux kernel's V3D driver and BCM2835 power domain driver (`src/pi4v3d/`), under the [GNU General Public License version 2 or later](https://www.gnu.org/licenses/old-licenses/gpl-2.0.html).
+
 ## Circle ARM stub
 
 For the Raspberry Pi 4, BMCoco includes `armstub8-rpi4.bin`, built from [Circle's `boot/armstub`](https://github.com/rsta2/circle/tree/master/boot/armstub) source, under Circle's [GNU General Public License version 3](https://github.com/rsta2/circle/blob/master/COPYING).
@@ -45,6 +53,8 @@ For the Raspberry Pi 4, BMCoco includes `armstub8-rpi4.bin`, built from [Circle'
 BMCoco includes the Wi-Fi firmware for the Raspberry Pi's wireless chip from the [RPi-Distro firmware-nonfree repository](https://github.com/RPi-Distro/firmware-nonfree), downloaded when BMCoco is built.
 
 See the `firmware/` folder on the SD card for the Broadcom, Cypress and Synaptics licenses that accompany it.
+
+The Pi 5's files (`brcmfmac43455-sdio.raspberrypi,5-model-b.*`) are copies of the `brcmfmac43455-sdio.*` files under the name Circle looks for on the Pi 5, under the same Cypress license.
 
 ## Other Third-Party Components
 

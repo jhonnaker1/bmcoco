@@ -55,6 +55,8 @@ int bmcoco_vsync_locked(void);
 int bmcoco_overloaded(void);
 void bmcoco_load(int *average, int *maximum);
 void bmcoco_video_settings_changed(void);
+/* The display's resolution setting changed (the Pi 5). */
+void bmcoco_display_mode_changed(void);
 void bmcoco_sound_settings_changed(void);
 int bmcoco_turbo(void);
 void bmcoco_set_turbo(int on);

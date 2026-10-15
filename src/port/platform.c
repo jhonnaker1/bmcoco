@@ -382,6 +382,19 @@ void bmcoco_video_settings_changed(void)
 	apply_view();
 }
 
+static void open_sound(void);
+
+/* The display's resolution setting changed (the Pi 5): the mode is set
+   again, as after a PAL/NTSC switch (from BMA800XL). */
+void bmcoco_display_mode_changed(void)
+{
+	if (machine_rate > 0.0 && host_display_match_rate(machine_rate))
+		measure_refresh_rate();
+	update_sync_mode();
+	open_sound();
+	apply_view();
+}
+
 int bmcoco_turbo(void)
 {
 	return turbo;

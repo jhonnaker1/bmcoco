@@ -51,11 +51,21 @@ The driver was written by examining the Linux `vc4` driver and the BCM2711
 device tree, documenting the hardware's behaviour, and writing BMA800XL's
 own code from that.
 
-A bare metal kernel can't use the Pi 4's OpenGL ES, so the CRT shader
-(`crt_shader`, `crt_curvature`) is crt-pi, with the settings used
-on the Pi 3, worked out on ARM cores 1 to 3 (`src/pi4/scaler.cpp`). It is
-drawn at up to 1080 lines (720 with curvature and smooth both on) and
-scaled up to fill larger screens.
+A bare metal kernel can't use the Pi 4's OpenGL ES, so BMCoco drives the
+Pi 4's 3D GPU itself (`src/pi4v3d/`, from BMA800XL 1.2.0) to draw the
+smooth and CRT pictures (`smooth`, `crt_shader`, `crt_curvature`):
+crt-pi, with the settings BMCoco uses on the Pi 3, at up to 1080 lines and
+scaled up to fill larger screens. If the GPU doesn't start or can't draw a
+picture, ARM cores 1 to 3 draw it instead (`src/pi4/scaler.cpp`; up to 1080
+lines, 720 with curvature and smooth both on); `crt_gpu=0` always uses the
+ARM. The log's `v3d:` lines and *Drawn by* line say which. `crt_gpu_test=1`
+also compares the GPU's pictures with the ARM's at start up.
+
+The CRT shader looks best at 1080p: `hdmi_mode=16` in `config.txt`
+(`hdmi_mode=31` for a PAL CoCo). At 720p a CoCo line is three pixels high,
+which curvature turns into faint rings. Sharp pixels are shown at whole
+multiples of the CoCo's size, so at 1080p they have black bars above and
+below.
 
 ## Sound
 

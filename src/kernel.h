@@ -2,7 +2,9 @@
 // kernel.h
 //
 // The Circle kernel for BMCoco: brings up the hardware, then runs the
-// XRoar emulator on core 1 while core 0 services USB.
+// XRoar emulator on core 1 while core 0 services USB. The Pi Zero has
+// one core: the emulator runs on it, and USB is serviced by a task between
+// frames (as in BMC64's Pi Zero build).
 //
 // This file is part of BMCoco, a bare metal Tandy Color Computer emulator for the
 // Raspberry Pi. See LICENSE for licensing details.
@@ -26,6 +28,7 @@
 #include <circle/multicore.h>
 #include <circle/nulldevice.h>
 #include <circle/sched/scheduler.h>
+#include <circle/sched/task.h>
 #include <circle/serial.h>
 #include <circle/spinlock.h>
 #include <circle/timer.h>
@@ -40,11 +43,12 @@
 #include "options.h"
 
 // The Pi 2 and 3 show the picture and play sound through the VideoCore
-// (dispmanx and VCHIQ, from BMC64); the Pi 4 through Circle's framebuffer
-// and HDMI sound drivers (src/pi4/).
+// (dispmanx and VCHIQ, from BMC64); the Pi 4 and 5 through Circle's
+// framebuffer and HDMI sound drivers (src/pi4/).
 #if RASPPI >= 4
 #include "pi4/sound.h"
 #include "pi4/video.h"
+#include "pi4v3d/crt.h"
 #else
 #include <vc4/vchiq/vchiqdevice.h>
 
@@ -56,6 +60,7 @@
 
 enum TShutdownMode { ShutdownNone, ShutdownHalt, ShutdownReboot };
 
+#ifdef ARM_ALLOW_MULTI_CORE
 // Runs the emulator on core 1. Cores 2 and 3 are left idle.
 class CEmulatorCore : public CMultiCoreSupport {
 public:
@@ -66,6 +71,16 @@ public:
 private:
   volatile bool m_bLaunch;
 };
+#else
+// One core: looks after USB devices coming and going, run by the scheduler
+// whenever the emulator yields (once a frame).
+// Based on BMC64's USBPlugAndPlayTask (src/kernel.cpp).
+class CUSBPlugAndPlayTask : public CTask {
+public:
+  CUSBPlugAndPlayTask(void) { SetName("usbpnp"); }
+  void Run(void) override;
+};
+#endif
 
 class CKernel {
 public:
@@ -79,6 +94,7 @@ public:
   int VideoInit(int width, int height, uint16_t **pixels, int *pitch);
   void DisplaySize(int *width, int *height);
   bool DisplayMatchRate(double fps);
+  bool DisplayResolutionChoice(void);
   void VideoSetView(int x, int y, int w, int h, double aspect);
   void VideoPresent(int wait_vsync);
   unsigned SoundOpen(unsigned freq, int channels, unsigned latency_frames);
@@ -113,10 +129,20 @@ private:
                                  int nDisplacementY, int nWheelMove);
   static void MouseRemovedHandler(CDevice *pDevice, void *pContext);
 
+public:
+  // Core 0, task level: sets up USB devices that were plugged in.
+  void UpdateUSBPlugAndPlay(void);
+
+private:
   void SetupUSBKeyboards(void);
   void SetupUSBGamePads(void);
   void SetupUSBMouse(void);
   void SetupGPIOJoysticks(void);
+#if RASPPI >= 5
+  void CheckPowerButton(void);
+  bool m_bPowerButtonSeenUp = false;
+  unsigned m_nPowerButtonDown = 0;   // clock ticks it went down, or 0
+#endif
   void PushKeyEvent(int usage, int pressed);
   void UpdateMergedKeys(void);
 
@@ -144,11 +170,16 @@ private:
   FATFS mFileSystem;
   CUSBHCIDevice mUSBHCI;
   CConsole mConsole;
+#ifdef ARM_ALLOW_MULTI_CORE
   CEmulatorCore mEmulatorCore;
+#endif
 
 #if RASPPI >= 4
   Pi4Video mVideo;
   Pi4Sound mPi4Sound;
+  v3d::Gpu mGpu;
+  v3d::Renderer mRenderer;
+  v3d::Crt mCrt;
 #else
   FrameBufferLayer mFrameBuffer;
   VchiqSound *mSound;
@@ -194,6 +225,11 @@ private:
   CSpinLock m_Lock;
 
   static CKernel *s_pThis;
+  // Until the emulator is launched only core 0 runs, and may write the log
+  // file itself.
+  bool mStarting = true;
+  static void PanicHandler(void);
+  friend void FlushStartupLog(void);
 };
 
 #endif

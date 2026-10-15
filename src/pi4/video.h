@@ -13,6 +13,8 @@
 // smooth both on), and on bigger displays the firmware scales it up.
 // Those pictures are drawn by cores 1, 2 and 3 together: core 1 runs the
 // emulator, cores 2 and 3 have nothing else to do.
+// With the crt_gpu option the 3D GPU draws them instead
+// (src/pi4v3d/crt.h), and the ARM again if the GPU can't.
 //
 // Sources:
 //  - Circle, include/circle/bcmframebuffer.h and lib/bcmframebuffer.cpp
@@ -47,7 +49,12 @@
 
 #include "frameshare.h"
 #include "scaler.h"
+#if RASPPI >= 5
+#include "../pi5kms/display.h"
+#else
 #include "../pi4kms/display.h"
+#endif
+#include "../pi4v3d/crt.h"
 
 #include <circle/bcmframebuffer.h>
 #include <stdint.h>
@@ -59,8 +66,8 @@ public:
 
   // Which driver puts the picture on the screen (the video_driver option):
   // the firmware's framebuffer, or BMCoco's own display lists on the HVS
-  // (src/pi4kms/, docs/PI4.md), on the firmware's video mode or (Kms)
-  // with BMCoco setting the mode too.
+  // (src/pi4kms/ or, on the Pi 5, src/pi5kms/; docs/PI4.md), on the
+  // firmware's video mode or (Kms) with BMCoco setting the mode too.
   enum class Driver { Firmware, Hvs, Kms };
 
   // Core 0, at start up: takes a double buffered framebuffer and, if asked
@@ -75,10 +82,19 @@ public:
   void Present(bool wait_vsync);
   void DisplaySize(int *width, int *height) const;
   // With the Kms driver: runs the display at FPS frames a second if it
-  // can. AUDIO_FS: the HDMI sound's sample rate. True if the mode changed.
-  bool MatchRate(double fps, unsigned audio_fs);
+  // can. AUDIO_FS: the HDMI sound's sample rate. LINES (the Pi 5 only):
+  // 1080 or 720 for that size, 0 for the firmware's. True if the mode
+  // changed.
+  bool MatchRate(double fps, unsigned audio_fs, unsigned lines = 0);
+  // True if MatchRate()'s LINES is used: the Pi 5 with the Kms driver.
+  bool ResolutionChoice(void) const;
   // Shows a black screen (before halting).
   void Blank(void);
+
+  // Core 0, once the 3D GPU is running (the crt_gpu option): from the next
+  // frame CRT draws the pictures the ARM would (smooth and CRT on the
+  // framebuffer, CRT on the HVS). The ARM takes over again if it fails.
+  void UseGpu(v3d::Crt *crt);
 
   // Cores 2 and 3 (CEmulatorCore::Run): help draw frames, forever.
   static void WorkerLoop(unsigned core);
@@ -94,6 +110,9 @@ private:
   void SetViewKms(int x, int y, int w, int h, double aspect, double scale);
   void PresentKms(bool wait_vsync);
   void WaitForVerticalSync(void);
+  bool DrawnByArm(void) const;
+  void ConfigureGpu(void);
+  void DropGpu(const char *why);
 
   // Pi4FrameShare's job.
   friend class Pi4FrameShare;
@@ -105,6 +124,7 @@ private:
   unsigned m_nWidth;      // framebuffer size in pixels
   unsigned m_nHeight;
   unsigned m_nPitch;      // bytes per framebuffer line
+  unsigned m_nPages;      // 2, or 1 if the firmware gave room for one only
   unsigned m_nBackPage;   // page drawn next: 0 or 1
   unsigned m_nDisplayWidth, m_nDisplayHeight;
   u64 m_nLastVsync;       // when the last wait for vsync ended (clock ticks)
@@ -138,6 +158,16 @@ private:
   Driver m_Driver;
   uint8_t *m_pKmsTarget;
   unsigned m_nKmsPitch;
+
+  // The GPU, when it draws instead of the ARM: offered by core 0, taken
+  // by core 1 at the next frame. KMS_SRC_W x KMS_SRC_H: the size the CRT
+  // shader draws at on the HVS.
+  v3d::Crt *volatile m_pGpuOffered;
+  v3d::Crt *m_pGpu;
+  bool m_bGpuReady;
+  unsigned m_nKmsSrcW, m_nKmsSrcH;
+  double m_fKmsAspect, m_fKmsScale;  // the last SetViewKms()'s
+  bool m_bKmsResize;                 // SetViewKms() again at the next frame
 
   static Pi4Video *s_pThis;
 };

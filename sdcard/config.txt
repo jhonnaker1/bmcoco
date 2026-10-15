@@ -1,12 +1,16 @@
 #
-# BMCoco - bare metal Tandy Color Computer emulator for the Raspberry Pi 2, 3 and 4
+# BMCoco - bare metal Tandy Color Computer emulator for the Raspberry Pi
+# Zero, 2, 3, 4 and 5
 #
 # Raspberry Pi firmware settings. Emulator options are in cmdline.txt.
 #
 
-# BMCoco runs in 32 bit mode on the Pi 2 and 3, and in 64 bit mode on the
-# Pi 4, with a kernel for each board.
+# BMCoco runs in 32 bit mode on the Pi Zero, 2 and 3, and in 64 bit mode
+# on the Pi 4 and 5, with a kernel for each board.
 arm_64bit=0
+# [pi0] also matches the Zero 2 W, which [pi02] then sets to the Pi 3's.
+[pi0]
+kernel=kernel.img
 [pi2]
 kernel=kernel7.img
 [pi3]
@@ -20,29 +24,42 @@ arm_64bit=1
 kernel_address=0x80000
 kernel=kernel8-rpi4.img
 armstub=armstub8-rpi4.bin
+# The Pi 5, Pi 500 and Pi 500+ (all match [pi5]). As in Circle's
+# boot/config64.txt; the Pi 5 needs no ARM stub. Its firmware sets the
+# framebuffer's depth from here rather than as asked: 32 bit.
+[pi5]
+arm_64bit=1
+kernel_address=0x80000
+kernel=kernel_2712.img
+framebuffer_depth=32
+framebuffer_ignore_alpha=1
 [all]
 
 # Video: 1280x720 at 60 Hz, the right rate for an NTSC CoCo (the default).
-# For a PAL CoCo or a Dragon use 50 Hz instead: hdmi_mode=19 (here and for
-# HDMI1 below).
+# For a PAL CoCo or a Dragon use 50 Hz instead: hdmi_mode=19 (here, and
+# hdmi_mode:1=19 for HDMI1 below).
 # The emulator's frames are locked to the display when its refresh rate
-# matches the CoCo's, which gives perfectly smooth scrolling. On the Pi 4
-# and Pi 400 BMCoco sets the display to an NTSC CoCo 1/2's exact rate
-# itself (the CoCo 3 and PAL CoCos stay at 60 or 50 Hz, see docs/PI4.md).
+# matches the CoCo's, which gives perfectly smooth scrolling. On the Pi 4,
+# Pi 400 and Pi 5 BMCoco sets the display to an NTSC CoCo 1/2's exact rate
+# itself (the CoCo 3 and PAL CoCos stay at 60 or 50 Hz, see docs/PI4.md);
+# hdmi_mode only chooses the resolution on the Pi 4 (the Pi 5's firmware
+# uses the display's preferred one; choose it under Video, Resolution).
 disable_overscan=1
 hdmi_group=1
 hdmi_mode=4
 
 # The same for the Pi 4's second HDMI port (HDMI1), which the lines above
 # don't cover.
-[HDMI:1]
-hdmi_group=1
-hdmi_mode=4
+[pi4]
+hdmi_group:1=1
+hdmi_mode:1=4
 [all]
 
 # Other useful modes (hdmi_group=1):
 #   hdmi_mode=19  720p  50 Hz        hdmi_mode=4   720p  60 Hz
 #   hdmi_mode=31  1080p 50 Hz        hdmi_mode=16  1080p 60 Hz
+# The CRT shader looks best at 1080p, especially with curvature; sharp
+# pixels then have black bars above and below.
 
 # Uncomment if you get no picture
 #hdmi_safe=1

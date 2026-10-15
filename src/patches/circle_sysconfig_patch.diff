@@ -28,4 +28,13 @@ index 566e6eb7..fed5f043 100644
 +#define NO_SCREEN_DMA_BURST_LENGTH
  #endif
  #endif
-
+ 
+@@ -467,7 +467,7 @@
+ // GNU-C 12.x uses floating point registers for optimization. This may
+ // occur anywhere in the code, even in IRQ and FIQ handlers.
+ 
+-#if RASPPI >= 2 && __GNUC__ >= 12
++#if __GNUC__ >= 12
+ 
+ #ifndef SAVE_VFP_REGS_ON_IRQ
+ #define SAVE_VFP_REGS_ON_IRQ
