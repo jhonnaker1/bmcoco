@@ -254,6 +254,10 @@ differ mouse tl br
 differ mouse br fire
 same mouse tl tl2
 
+echo "Missing ROMs are named by their files"
+run cp400 60 "$TESTROMS" "machine=cp400" '100 quit\n'
+check_log cp400 "ROMs not found: cp400bas.rom, cp400extbas.rom" "a CP-400 without its ROMs names them"
+
 echo "Hard disks"
 # A card with a stand-in HDB-DOS ROM and a blank hard disk image. Menu,
 # Hard Disks (down two), Drive 0, the disks folder, the image: the IDE

@@ -1,3 +1,10 @@
+## Unreleased
+
+- Missing CP-400 and MX-1600 ROMs are named by their files (cp400bas.rom,
+  cp400extbas.rom, ...), not XRoar's list names: a CP-400 without
+  cp400bas.rom showed only "cp400", then ran with no Color BASIC (a screen
+  of garbage)
+
 ## 0.3.0 – 2026-10-15
 
 - A Pi too slow for the frame lock (the most accurate artifact colours on a

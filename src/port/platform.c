@@ -636,6 +636,8 @@ static void check_rom(char *list, size_t size, const char *rom)
 			{"@mc10", "mc10.rom"}, {"@dragon32", "d32.rom"},
 			{"@dragon64", "d64_1.rom"}, {"@dragon64_alt", "d64_2.rom"},
 			{"@deluxecoco", "deluxe.rom"},
+			{"@cp400", "cp400bas.rom"}, {"@cp400ext", "cp400extbas.rom"},
+			{"@mx1600", "mx1600bas.rom"}, {"@mx1600ext", "mx1600extbas.rom"},
 		};
 		unsigned i;
 		for (i = 0; i < sizeof(usual) / sizeof(usual[0]); i++) {
