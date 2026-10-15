@@ -1,4 +1,4 @@
-## Unreleased
+## 0.3.1 – 2026-10-15
 
 - Missing CP-400 and MX-1600 ROMs are named by their files (cp400bas.rom,
   cp400extbas.rom, ...), not XRoar's list names: a CP-400 without
