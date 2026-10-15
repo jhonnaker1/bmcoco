@@ -1,4 +1,4 @@
-## Unreleased
+## 0.3.0 – 2026-10-15
 
 - A Pi too slow for the frame lock (the most accurate artifact colours on a
   Pi 3, a CoCo 3 at double speed in a busy game) no longer drops to half
