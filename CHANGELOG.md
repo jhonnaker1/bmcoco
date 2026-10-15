@@ -1,4 +1,4 @@
-## Unreleased
+## 0.4.0 – 2026-10-15
 
 - From BMA800XL 1.2.0 to 1.4.0:
   - Raspberry Pi 5, Pi 500 and Pi 500+ (`kernel_2712.img`): BMA800XL's
