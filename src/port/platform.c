@@ -448,15 +448,34 @@ static void feed_silence(void)
 	}
 }
 
+/* N samples resampled to WANT (linear interpolation, in 16.16 fixed
+   point) into OUT. */
+static void resample(const int16_t *in, unsigned n, int16_t *out, unsigned want)
+{
+	unsigned i;
+	for (i = 0; i < want; i++) {
+		uint32_t pos = want > 1 ? (uint32_t) (((uint64_t) i * (n - 1) << 16) / (want - 1)) : 0;
+		unsigned j = pos >> 16;
+		int frac = (int) (pos & 0xffff);
+		int a = in[j];
+		int b = j + 1 < n ? in[j + 1] : a;
+		out[i] = (int16_t) (a + (((b - a) * frac) >> 16));
+	}
+}
+
 /* A fragment from XRoar. The emulation runs at the display's pace or a
    timer's, never quite the sound output's, so the buffer is kept about half
-   full by dropping or repeating a sample when it strays. One sample in 512
-   is far below what can be heard, and more than covers the 0.1% between an
-   NTSC CoCo and a 60 Hz display. */
+   full: each fragment is squeezed or stretched a little, the more the
+   further the buffer is from half full, up to 2%. That covers all the
+   frame lock allows (it locks within 2%: a CoCo 3's 59.69 Hz on a 60 Hz
+   display is 0.5% fast, a PAL CoCo's 50.32 Hz on 50 Hz 0.6%), far too
+   little to hear; dropping whole samples instead, or what doesn't fit,
+   clicks. */
 static void play_fragment(const int16_t *samples, unsigned n)
 {
 	static int16_t buf[AO_FRAGMENT * 2 + 1];
-	unsigned free_frames, used;
+	static double carry;   /* the fraction of a sample left over */
+	unsigned free_frames, used, want;
 	if (ao_rate == 0)
 		return;
 	free_frames = host_sound_free_frames();
@@ -470,32 +489,34 @@ static void play_fragment(const int16_t *samples, unsigned n)
 			host_sound_write(samples, n);
 		return;
 	}
-	if (used < ao_latency / 4 && n > 0 && n <= AO_FRAGMENT) {
-		/* Running dry: one sample more, or, the emptier it is (the
-		   emulation slower than real time: a Pi too slow for it), the
-		   fragment stretched to up to twice its length, lower in
-		   pitch, rather than gaps. */
+	if (n < 2 || n > AO_FRAGMENT)
+		return;
+	if (used < ao_latency / 4) {
+		/* Running dry: the emptier it is (the emulation slower than
+		   real time: a Pi too slow for it), the fragment stretched to up
+		   to twice its length, lower in pitch, rather than gaps. */
 		unsigned quarter = ao_latency / 4;
-		unsigned want = n + 1 + n * (quarter - used) / quarter;
-		unsigned i;
+		want = n + 1 + n * (quarter - used) / quarter;
 		if (want > AO_FRAGMENT * 2 + 1)
 			want = AO_FRAGMENT * 2 + 1;
-		for (i = 0; i < want; i++) {
-			/* Linear interpolation, in 16.16 fixed point. */
-			uint32_t pos = (uint32_t) (((uint64_t) i * (n - 1) << 16) / (want - 1));
-			unsigned j = pos >> 16;
-			int frac = (int) (pos & 0xffff);
-			int a = samples[j];
-			int b = j + 1 < n ? samples[j + 1] : a;
-			buf[i] = (int16_t) (a + (((b - a) * frac) >> 16));
-		}
+		carry = 0.0;
+	} else {
+		double half = ao_latency / 2.0;
+		double error = (half - used) / half;   /* 1 empty, -1 full */
+		double exact;
+		if (error > 1.0)
+			error = 1.0;
+		if (error < -1.0)
+			error = -1.0;
+		exact = n * (1.0 + 0.02 * error) + carry;
+		want = (unsigned) exact;
+		carry = exact - want;
+	}
+	if (want != n) {
+		resample(samples, n, buf, want);
+		ao_corrections += (int) want - (int) n;
 		samples = buf;
 		n = want;
-		ao_corrections++;
-	} else if (used > (ao_latency * 3) / 4 && n > 1) {
-		/* Getting full: one sample less. */
-		n--;
-		ao_corrections--;
 	}
 	if (n > free_frames) {
 		/* No room at all (the emulation got far ahead): drop it. */

@@ -306,6 +306,22 @@ if [ -n "${BMCOCO_ROMS:-}" ]; then
     check_log coco3 "Super Extended Colour BASIC" "CoCo 3 ROM found"
     check_log coco3 "synchronised to the display" "CoCo 3 locked to 60 Hz"
 
+    echo "CoCo 3 sound on a 60 Hz display"
+    # A CoCo 3 (59.69 Hz) locked to 60 Hz runs 0.5% fast: the sound must be
+    # slowed to fit, never cut off with the buffer full (which clicks), and
+    # PLAY's notes stay in tune (F 349 Hz, E 330 Hz).
+    run coco3play 60 "$BMCOCO_ROMS" "machine=coco3" '300 type PLAY"FEFEFE"\\n\n900 audio\n901 quit\n'
+    line=$(grep "audio written" "$OUT/coco3play/log.txt" | tail -1)
+    max=$(echo "$line" | sed 's/.*after write max \([0-9]*\).*/\1/')
+    cap=$(grep "sound open" "$OUT/coco3play/log.txt" | head -1 | sed 's/.*, \([0-9]*\) frames.*/\1/')
+    # (with the old one-sample corrections it reached 2645 of 2646)
+    if [ -n "$max" ] && [ -n "$cap" ] && [ "$max" -le $((cap * 97 / 100)) ]; then
+        pass "coco3play: the sound buffer never fills ($max of $cap)"
+    else
+        fail coco3play "the sound buffer filled: $line (capacity $cap)"
+    fi
+    check_audio coco3play
+
     echo "Becker port (real ROMs, a stand-in DriveWire server)"
     # The IDE interface (a stand-in HDB-DOS: only its Becker port is used)
     # in xroar.conf. A BASIC program writes A to the port's data register,

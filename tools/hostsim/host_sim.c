@@ -25,6 +25,11 @@
  * virtual time, as on a computer too slow for it (a Pi 3 with the most
  * accurate artifact colours, say).
  *
+ * BMCOCO_SIM_WAV=FILE writes the sound output to FILE (16-bit WAV).
+ *
+ * BMCOCO_SIM_CPU=1 prints the PC's CPU time a frame, every 60 frames: how
+ * hard each screen is to emulate.
+ *
  * BMCOCO_SIM_CONNECT_FRAMES=N makes background work (connecting to a
  * DriveWire server) start N frames late, as connecting does on the Pi
  * when the server is slow to answer.
@@ -259,8 +264,54 @@ unsigned host_sound_free_frames(void)
 	return snd_buffered >= cap ? 0 : (unsigned) (cap - snd_buffered);
 }
 
+/* BMCOCO_SIM_WAV: the sound, as written, in a WAV file. */
+static FILE *wav;
+static unsigned long wav_bytes;
+
+static void wav_header(void)
+{
+	unsigned rate = HW_RATE, ch = (unsigned) snd_channels, bytes = (unsigned) wav_bytes;
+	unsigned char h[44] = "RIFF....WAVEfmt \x10\0\0\0\1\0";
+	unsigned v[] = {36 + bytes, 0, 0};
+	(void) v;
+	memcpy(h + 4, &(unsigned){36 + bytes}, 4);
+	h[22] = (unsigned char) ch; h[23] = 0;
+	memcpy(h + 24, &rate, 4);
+	memcpy(h + 28, &(unsigned){rate * ch * 2}, 4);
+	h[32] = (unsigned char) (ch * 2); h[33] = 0; h[34] = 16; h[35] = 0;
+	memcpy(h + 36, "data", 4);
+	memcpy(h + 40, &bytes, 4);
+	fseek(wav, 0, SEEK_SET);
+	fwrite(h, 1, 44, wav);
+	fseek(wav, 0, SEEK_END);
+}
+
+static void wav_close(void)
+{
+	if (wav != NULL) {
+		wav_header();
+		fclose(wav);
+		wav = NULL;
+	}
+}
+
+static void wav_write(const int16_t *samples, unsigned frames)
+{
+	const char *name;
+	if (wav == NULL) {
+		name = getenv("BMCOCO_SIM_WAV");
+		if (name == NULL || (wav = fopen(name, "wb")) == NULL)
+			return;
+		wav_header();
+		atexit(wav_close);
+	}
+	fwrite(samples, 2, frames * snd_channels, wav);
+	wav_bytes += frames * snd_channels * 2;
+}
+
 void host_sound_write(const int16_t *samples, unsigned frames)
 {
+	wav_write(samples, frames);
 
 	unsigned i;
 	sound_advance();
@@ -555,9 +606,32 @@ static void tick(void)
 		exit(1);
 }
 
+static void cpu_report(void)
+{
+	static double last, sum;
+	static int frames, on = -1;
+	struct timespec ts;
+	double t;
+	if (on < 0)
+		on = getenv("BMCOCO_SIM_CPU") != NULL;
+	if (!on)
+		return;
+	clock_gettime(CLOCK_THREAD_CPUTIME_ID, &ts);
+	t = ts.tv_sec + ts.tv_nsec / 1e9;
+	if (last > 0.0)
+		sum += t - last;
+	last = t;
+	if (++frames == 60) {
+		fprintf(stderr, "[sim] frame %ld: %.2f ms CPU a frame\n", frame, sum * 1000.0 / frames);
+		sum = 0.0;
+		frames = 0;
+	}
+}
+
 void host_video_present(int wait_vsync)
 {
 	presents++;
+	cpu_report();
 	if (live) {
 		if (wait_vsync) {
 			/* Wait for the next refresh of a 60 Hz display. */
