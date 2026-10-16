@@ -59,6 +59,7 @@ next item starting with it.
 | Run a Program  | Choose a disk, tape, cartridge or program and start it: XRoar inserts it and types the commands to run it (`RUN"..."` from a disk, `CLOAD` from a tape, ...) |
 | Disk Drives    | Insert or eject a disk in drives 0-3, and write protect it |
 | Hard Disks     | Hard disk images for drives 0 and 1 of an IDE interface (see Hard disks) |
+| DriveWire      | The DriveWire server for the Becker port, built in or on another computer, and the built-in one's drives 0-3 (see The Becker port) |
 | Cassette       | Insert a tape (then type `CLOAD` or `CLOADM`), rewind, eject, fast loading |
 | Cartridge      | Plug in a cartridge file, one of XRoar's built in cartridges (Disk BASIC and others), or none |
 | Machine        | CoCo 1, 2 or 3, PAL or NTSC, with or without a 6309, and the other machines XRoar emulates. Machines without ROMs are marked |
@@ -67,7 +68,7 @@ next item starting with it.
 | Video          | TV input (composite with artifact colours, S-Video, or RGB for the CoCo 3), the artifact colour renderer, how much border to show, the frame lock, the resolution (Pi 5), the CRT effect and its curvature, smooth scaling |
 | Keyboard       | Typed characters on or off, and the PC keyboard's layout |
 | Sound          | Volume, and HDMI or the headphone jack |
-| Network        | Ethernet or Wi-Fi, the web UI (see below), and the DriveWire server for the Becker port |
+| Network        | Ethernet or Wi-Fi, and the web UI (see below) |
 | Turbo          | Run as fast as the Pi can (also F11) |
 | Reset, Hard Reset | The reset button (F10), or power off and on (Shift+F10) |
 | About          | Versions, the machine, ROM status, display, load and network |
@@ -210,15 +211,26 @@ then choose it in *Cartridge*; *Hard Disks* then changes its images.
 
 ## The Becker port (DriveWire)
 
-The Becker port connects the CoCo to a DriveWire server over the network
-(DriveWire 4 or pyDriveWire on a PC, for example), which serves it disk
-images and more. Choose *RS-DOS with becker port* in *Cartridge* (it needs
-HDB-DOS for DriveWire, `hdbdw3bck.rom`, in `roms`), or use the IDE
-interface, which has one too. Set the server's address under *Network*,
-*DriveWire Server* (`becker_ip` and `becker_port` in `cmdline.txt`; port
-65504 if not given), and turn on networking. BMCoco connects once the Pi
-has an address, and tries again every 10 seconds if the server isn't
-there; the log says when it connects.
+The Becker port connects the CoCo to a DriveWire server, which serves it
+disk images and more. Choose *RS-DOS with becker port* in *Cartridge* (it
+needs HDB-DOS for DriveWire, `hdbdw3bck.rom`, in `roms`), or use the IDE
+interface, which has one too. NitrOS-9's DriveWire builds (such as the
+`dw_becker` disks of NitrOS-9 EOU for the IDE interface) use it at boot.
+
+BMCoco has a DriveWire server built in, so no other computer is needed:
+choose disk images for its drives 0 to 3 in the menu's *DriveWire*
+(NitrOS-9's `/X0` to `/X3`; kept as `dw0` to `dw3` in `bmcoco.cfg`). It
+also gives NitrOS-9 the time. It has no virtual serial channels (`/N`,
+`/Z`), printing or named objects.
+
+To use a server on another computer instead (DriveWire 4 or pyDriveWire on
+a PC, for example), set *Server* to *Another Computer* and type its
+address, with `:port` if it isn't 65504 (`becker_ip` and `becker_port` in
+`cmdline.txt`), and turn on networking. BMCoco connects once the Pi has an
+address, in the background (the CoCo keeps running), and tries again every
+10 seconds if the server isn't there; the log says when it connects. An
+address of `127.0.0.1` or `localhost`, as in an `xroar.conf` from a PC,
+means the built-in server: nothing else can listen there on the Pi.
 
 ## Networking and the web UI
 
@@ -311,7 +323,8 @@ web UI.
 | `mouse_speed`       | percent                      | `100`    | How far the mouse moves the pointer (see Joysticks) |
 | `ram_NAME`          | K, e.g. `ram_coco3=2048`     | machine's | The RAM of machine NAME (the menu's *Memory*) |
 | `hd0`, `hd1`, `hd_cart` | paths, a cartridge name  | none     | Hard disk images and their cartridge (the menu's *Hard Disks*) |
-| `becker_ip`, `becker_port` | address, port         | `127.0.0.1`, `65504` | The Becker port's DriveWire server |
+| `becker_ip`, `becker_port` | address, port         | none (built in), `65504` | The Becker port's DriveWire server on another computer |
+| `dw0` ... `dw3`     | paths                        | none     | The built-in DriveWire server's disk images (the menu's *DriveWire*) |
 | `gpio_joysticks`    | `0`, `1`                     | `0`      | Joysticks on the GPIO header |
 | `enable_logging`    | `off`, `uart`, `file`        | `off`    | Where the log goes (see Logging) |
 | `network`           | `off`, `ethernet`, `wifi`    | `off`    | Networking (see Networking and the web UI) |

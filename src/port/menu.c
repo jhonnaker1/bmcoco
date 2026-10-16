@@ -34,11 +34,13 @@
 #include "vdrive.h"
 #include "vo.h"
 #include "romlist.h"
+#include "xalloc.h"
 #include "xconfig.h"
 #include "xroar.h"
 
 #include "../host.h"
 #include "bmcoco.h"
+#include "dwserver.h"
 #include "osd.h"
 
 #ifndef BMCOCO_VERSION
@@ -387,6 +389,103 @@ static void hard_disks_menu(void)
 			eject_hd(chosen == H_EJECT0 ? 0 : 1);
 			break;
 		default:
+			return;
+		}
+	}
+}
+
+/* ---- DriveWire ------------------------------------------------------------ */
+
+static const char *const dw_exts[] = {"dsk", "os9", "vhd", "img", "dw", NULL};
+
+/* TRUE if the DriveWire server is BMCoco's own: no address, or this Pi's
+   (as src/port/becker.c decides). */
+static int dw_builtin(void)
+{
+	const char *ip = host_option("becker_ip", "");
+	return ip[0] == '\0' || strcmp(ip, "builtin") == 0 || strcmp(ip, "127.0.0.1") == 0
+	       || strcmp(ip, "localhost") == 0;
+}
+
+/* Uses the server at IP:PORT (IP "" for the built-in one) from now on, and
+   at the next boot. */
+static void set_dw_server(const char *ip, const char *port)
+{
+	free(xroar.cfg.becker.ip);
+	xroar.cfg.becker.ip = ip[0] ? xstrdup(ip) : NULL;
+	free(xroar.cfg.becker.port);
+	xroar.cfg.becker.port = port[0] ? xstrdup(port) : NULL;
+	save_setting("becker_ip", ip);
+	save_setting("becker_port", port);
+}
+
+static void drivewire_menu(void)
+{
+	enum { W_SERVER = 10, W_DRIVE0 = 20, W_EJECT0 = 30 };
+	static const char *const servers[] = {"Built-in", "Another Computer...", NULL};
+	static char names[DWSERVER_DRIVES][48];
+	static char server[80];
+	int sel = 2;
+	for (;;) {
+		struct osd_item items[16];
+		int n = 0, d, i, chosen;
+		char path[512];
+		if (dw_builtin())
+			snprintf(server, sizeof server, "Built-in");
+		else
+			snprintf(server, sizeof server, "%s:%s", host_option("becker_ip", ""),
+			         host_option("becker_port", "65504"));
+		items[n++] = (struct osd_item){"For the Becker port (IDE interface,", NULL, OSD_ITEM_LABEL, -1};
+		items[n++] = (struct osd_item){"or RS-DOS with Becker port).", NULL, OSD_ITEM_LABEL, -1};
+		items[n++] = (struct osd_item){"Server", server, OSD_ITEM_SUBMENU, W_SERVER};
+		items[n++] = (struct osd_item){"", NULL, OSD_ITEM_LABEL, -1};
+		for (d = 0; d < DWSERVER_DRIVES; d++) {
+			static const char *const labels[] = {"Drive 0", "Drive 1", "Drive 2", "Drive 3"};
+			const char *image = dwserver_drive(d);
+			snprintf(names[d], sizeof names[d], "%s", image ? base_name(image) : "(empty)");
+			items[n++] = (struct osd_item){labels[d], names[d], OSD_ITEM_SUBMENU, W_DRIVE0 + d};
+		}
+		items[n++] = (struct osd_item){"", NULL, OSD_ITEM_LABEL, -1};
+		items[n++] = (struct osd_item){"The drives are the built-in", NULL, OSD_ITEM_LABEL, -1};
+		items[n++] = (struct osd_item){"server's (NitrOS-9: /X0 to /X3).", NULL, OSD_ITEM_LABEL, -1};
+		chosen = osd_menu("DriveWire", items, n, &sel);
+		if (chosen == W_SERVER) {
+			i = osd_choose("DriveWire Server", servers, dw_builtin() ? 0 : 1);
+			if (i == 0) {
+				set_dw_server("", "");
+			} else if (i == 1) {
+				/* ADDRESS or ADDRESS:PORT */
+				char text[80];
+				snprintf(text, sizeof(text), "%s", dw_builtin() ? "" : server);
+				if (osd_edit("DriveWire Server (address:port)", text, sizeof(text), FALSE)) {
+					char *colon = strrchr(text, ':');
+					const char *port = "65504";
+					if (colon != NULL) {
+						*colon = '\0';
+						if (colon[1])
+							port = colon + 1;
+					}
+					set_dw_server(text, port);
+				}
+			}
+		} else if (chosen >= W_DRIVE0 && chosen < W_DRIVE0 + DWSERVER_DRIVES) {
+			static const char *const choices[] = {"Choose Image...", "Eject", NULL};
+			char key[8];
+			d = chosen - W_DRIVE0;
+			snprintf(key, sizeof key, "dw%d", d);
+			i = dwserver_drive(d) != NULL ? osd_choose(names[d], choices, 0) : 0;
+			if (i == 1) {
+				dwserver_set_drive(d, NULL);
+				save_setting(key, "");
+			} else if (i == 0 && browse(d == 0 ? "DriveWire Drive 0" : d == 1 ? "DriveWire Drive 1"
+			                  : d == 2 ? "DriveWire Drive 2" : "DriveWire Drive 3",
+			                  dw_exts, path, sizeof(path))) {
+				if (dwserver_set_drive(d, path))
+					save_setting(key, path);
+				else
+					osd_message("Can't open that disk image.", TRUE);
+			}
+		} else {
 			return;
 		}
 	}
@@ -1104,12 +1203,12 @@ static int scan_wifi(void)
 static void network_menu(void)
 {
 	enum { N_DEVICE, N_SCAN, N_SSID, N_PASSWORD, N_COUNTRY, N_WEBUI, N_PIN, N_TIMEZONE,
-	       N_DRIVEWIRE, N_REBOOT };
+	       N_REBOOT };
 	static const char *const devices[] = {"off", "ethernet", "wifi", NULL};
 	static const char *const device_names[] = {"Off", "Ethernet", "Wi-Fi", NULL};
 	int sel = 2;
 	for (;;) {
-		char status[64], tz[16], drivewire[80];
+		char status[64], tz[16];
 		const char *net = host_option("network", "off");
 		const char *pin = host_option("webui_pin", "");
 		int device = strcmp(net, "ethernet") == 0 ? 1 : strcmp(net, "wifi") == 0 ? 2 : 0;
@@ -1118,8 +1217,6 @@ static void network_menu(void)
 
 		read_wifi_config();
 		host_network_status(status, sizeof(status));
-		snprintf(drivewire, sizeof(drivewire), "%s:%s", host_option("becker_ip", "127.0.0.1"),
-		         host_option("becker_port", "65504"));
 		if (minutes == 0)
 			strcpy(tz, "UTC");
 		else
@@ -1136,7 +1233,6 @@ static void network_menu(void)
 				{"Web UI", NULL, check(setting_on("webui", TRUE)), N_WEBUI},
 				{"Web UI PIN", pin[0] ? pin : "(none)", OSD_ITEM_SUBMENU, N_PIN},
 				{"Time Zone", tz, OSD_ITEM_SUBMENU, N_TIMEZONE},
-				{"DriveWire Server", drivewire, OSD_ITEM_SUBMENU, N_DRIVEWIRE},
 				{"", NULL, OSD_ITEM_LABEL, -1},
 				{"Changes apply after a reboot.", NULL, OSD_ITEM_LABEL, -1},
 				{"Reboot Now", NULL, 0, N_REBOOT},
@@ -1176,21 +1272,6 @@ static void network_menu(void)
 			snprintf(text, sizeof(text), "%s", pin);
 			if (osd_edit("Web UI PIN (blank: none)", text, sizeof(text), FALSE)) {
 				save_setting("webui_pin", text);
-				reboot_needed = TRUE;
-			}
-			break;
-		}
-		case N_DRIVEWIRE: {
-			/* The Becker port's server: ADDRESS or ADDRESS:PORT. */
-			char text[80];
-			snprintf(text, sizeof(text), "%s", drivewire);
-			if (osd_edit("DriveWire Server (address:port)", text, sizeof(text), FALSE)) {
-				char *colon = strrchr(text, ':');
-				if (colon != NULL) {
-					*colon = '\0';
-					save_setting("becker_port", colon[1] ? colon + 1 : "65504");
-				}
-				save_setting("becker_ip", text[0] ? text : "127.0.0.1");
 				reboot_needed = TRUE;
 			}
 			break;
@@ -1268,7 +1349,7 @@ static void offer_reboot(void)
 void bmcoco_menu(void)
 {
 	enum {
-		M_RUN, M_DISKS, M_HD, M_TAPE, M_CART, M_MACHINE, M_MEMORY, M_JOYSTICKS, M_VIDEO, M_KEYBOARD,
+		M_RUN, M_DISKS, M_HD, M_DW, M_TAPE, M_CART, M_MACHINE, M_MEMORY, M_JOYSTICKS, M_VIDEO, M_KEYBOARD,
 		M_SOUND, M_NETWORK, M_TURBO, M_RESET, M_HARD_RESET, M_ABOUT, M_REBOOT, M_OFF
 	};
 	static int sel = 2;
@@ -1284,6 +1365,7 @@ void bmcoco_menu(void)
 			{"Run a Program", NULL, OSD_ITEM_SUBMENU, M_RUN},
 			{"Disk Drives", NULL, OSD_ITEM_SUBMENU, M_DISKS},
 			{"Hard Disks", NULL, OSD_ITEM_SUBMENU, M_HD},
+			{"DriveWire", NULL, OSD_ITEM_SUBMENU, M_DW},
 			{"Cassette", NULL, OSD_ITEM_SUBMENU, M_TAPE},
 			{"Cartridge", cart_name(state.cart_id), OSD_ITEM_SUBMENU, M_CART},
 			{"Machine", NULL, OSD_ITEM_SUBMENU, M_MACHINE},
@@ -1307,6 +1389,7 @@ void bmcoco_menu(void)
 		case M_RUN: leave = run_file(); break;
 		case M_DISKS: disks_menu(); break;
 		case M_HD: hard_disks_menu(); break;
+		case M_DW: drivewire_menu(); break;
 		case M_TAPE: tape_menu(); break;
 		case M_CART: cart_menu(); break;
 		case M_MACHINE: machine_menu(); break;

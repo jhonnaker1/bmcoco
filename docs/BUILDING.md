@@ -106,8 +106,9 @@ BMCOCO_ROMS=/path/to/your/roms tools/hostsim/run_tests.sh
 The CoCo's ROMs can't be distributed, so the tests run a small stand-in
 ROM that `tools/hostsim/make_test_rom.py` assembles: it shows the keyboard
 matrix, the joysticks and a frame counter, and makes a sound. With
-`BMCOCO_ROMS` set, Color BASIC, the CoCo 3 and the Becker port (with a
-stand-in DriveWire server) are tested too. Screenshots
+`BMCOCO_ROMS` set, Color BASIC, the CoCo 3, the built-in DriveWire server
+and the Becker port (with a stand-in DriveWire server, slow to connect
+too) are tested too. Screenshots
 (`.ppm`) are written to `tools/hostsim/out/`.
 
 To play with the port on the PC, run it live:
@@ -162,7 +163,8 @@ with `tools/gen_webui_assets.py` whenever an asset changes.
 | `src/port/joystick.c`        | Gamepads and GPIO joysticks as the CoCo's joysticks |
 | `src/port/menu.c`, `osd.c`   | The menu and its on-screen display          |
 | `src/port/posix_extra.c`     | regcomp(), basename(), access() for newlib  |
-| `src/port/becker.c`          | XRoar's Becker port (DriveWire over TCP), without blocking |
+| `src/port/becker.c`          | XRoar's Becker port (DriveWire over TCP, connecting in the background), or the built-in server |
+| `src/port/dwserver.c`        | The built-in DriveWire server               |
 | `src/port/config.h`          | XRoar's build configuration                 |
 | `src/port/xroar.mk`          | Which XRoar sources are built               |
 | `src/patches/`               | Changes applied to Circle by `make_all.sh`  |

@@ -54,6 +54,7 @@
 
 #include "../host.h"
 #include "bmcoco.h"
+#include "dwserver.h"
 #include "osd.h"
 
 /* ---- Settings ---------------------------------------------------------------- */
@@ -1134,6 +1135,19 @@ void bmcoco_main(void)
 	apply_view();
 	measure_refresh_rate();
 	open_sound();
+
+	/* The built-in DriveWire server's disks (the menu's DriveWire page). */
+	{
+		int d;
+		for (d = 0; d < DWSERVER_DRIVES; d++) {
+			char key[8];
+			const char *path;
+			snprintf(key, sizeof key, "dw%d", d);
+			path = host_option(key, "");
+			if (path[0] != '\0' && !dwserver_set_drive(d, path))
+				LOG_WARN("DriveWire: can't open %s for drive %d\n", path, d);
+		}
+	}
 
 	argc = build_args(argv, 62);
 	ui_module_list = bmcoco_ui_module_list;

@@ -26,6 +26,7 @@
 #include <circle/machineinfo.h>
 #include <circle/net/netsubsystem.h>
 #include <circle/netdevice.h>
+#include <circle/sched/task.h>
 #include <circle/string.h>
 #include <fatfs/ff.h>
 #include <wlan/bcm4343.h>
@@ -357,6 +358,29 @@ extern "C" int host_wifi_scan(struct host_wifi_ap *aps, int max) {
   CLogger::Get()->Write(FromNetwork, LogNotice,
                         "Wi-Fi scan found %u networks", count);
   return (int)count;
+}
+
+//
+// Work in the background (host_run_in_background): a task that runs a C
+// function once and ends; the scheduler then deletes it.
+//
+
+namespace {
+
+class CBackgroundTask : public CTask {
+public:
+  CBackgroundTask(void (*fn)(void *), void *arg) : mFn(fn), mArg(arg) {}
+  void Run(void) override { mFn(mArg); }
+
+private:
+  void (*mFn)(void *);
+  void *mArg;
+};
+
+}  // namespace
+
+extern "C" int host_run_in_background(void (*fn)(void *arg), void *arg) {
+  return new CBackgroundTask(fn, arg) != 0;
 }
 
 //

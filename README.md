@@ -20,6 +20,8 @@ projects.
 - NTSC artifact colours, as CoCo games expect, or S-Video and RGB
 - Disk images (DSK, VDK, JVC, OS9, DMK) with RS-DOS, tapes (CAS), cartridges
   (CCC, ROM) and machine code programs (BIN, HEX, S19)
+- Hard disk images on an IDE interface, and a built-in DriveWire server for
+  the Becker port (NitrOS-9's DriveWire builds run with no other computer)
 - USB keyboards; USB gamepads as the CoCo's analog joysticks (an analog stick
   gives the full 0-63 range); real joysticks wired to the GPIO header
 - No shutdown needed: just switch it off (changed disks are written back

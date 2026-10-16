@@ -229,9 +229,9 @@ else
 fi
 
 echo "Memory"
-# Menu, down six to Memory, up two from 64K to 16K: the machine is reset
+# Menu, down seven to Memory, up two from 64K to 16K: the machine is reset
 # with 16K, the choice saved, and used again at the next boot.
-run memory 60 "$TESTROMS" "" '120 key 0x45 1\n121 key 0x45 0\n128 key 0x51 1\n129 key 0x51 0\n130 key 0x51 1\n131 key 0x51 0\n132 key 0x51 1\n133 key 0x51 0\n134 key 0x51 1\n135 key 0x51 0\n136 key 0x51 1\n137 key 0x51 0\n138 key 0x51 1\n139 key 0x51 0\n150 key 0x28 1\n151 key 0x28 0\n160 key 0x52 1\n161 key 0x52 0\n162 key 0x52 1\n163 key 0x52 0\n170 key 0x28 1\n171 key 0x28 0\n300 quit\n'
+run memory 60 "$TESTROMS" "" '120 key 0x45 1\n121 key 0x45 0\n128 key 0x51 1\n129 key 0x51 0\n130 key 0x51 1\n131 key 0x51 0\n132 key 0x51 1\n133 key 0x51 0\n134 key 0x51 1\n135 key 0x51 0\n136 key 0x51 1\n137 key 0x51 0\n138 key 0x51 1\n139 key 0x51 0\n140 key 0x51 1\n141 key 0x51 0\n150 key 0x28 1\n151 key 0x28 0\n160 key 0x52 1\n161 key 0x52 0\n162 key 0x52 1\n163 key 0x52 0\n170 key 0x28 1\n171 key 0x28 0\n300 quit\n'
 check_log memory "16K = 16K motherboard RAM" "the menu sets 16K"
 if grep -q "^ram_coco2bus=16" "$OUT/memory/bmcoco.cfg" 2>/dev/null; then
     pass "memory: ram_coco2bus=16 saved to bmcoco.cfg"
@@ -253,6 +253,18 @@ check_log mouse "port 0 = Mouse" "Mouse plugged into the right port"
 differ mouse tl br
 differ mouse br fire
 same mouse tl tl2
+
+echo "DriveWire drives"
+# Menu, down three to DriveWire, down one to Drive 0, the disks folder, the
+# image: it is drive 0 of the built-in server, kept in bmcoco.cfg.
+mkdir -p "$OUT/dwmenu/disks"
+head -c 161280 /dev/zero > "$OUT/dwmenu/disks/nitros9.dsk"
+run dwmenu 60 "$TESTROMS" "" '120 key 0x45 1\n121 key 0x45 0\n130 key 0x51 1\n131 key 0x51 0\n132 key 0x51 1\n133 key 0x51 0\n134 key 0x51 1\n135 key 0x51 0\n140 key 0x28 1\n141 key 0x28 0\n150 key 0x51 1\n151 key 0x51 0\n160 key 0x28 1\n161 key 0x28 0\n170 key 0x28 1\n171 key 0x28 0\n180 key 0x28 1\n181 key 0x28 0\n300 quit\n'
+if grep -q "^dw0=.*disks/nitros9.dsk" "$OUT/dwmenu/bmcoco.cfg" 2>/dev/null; then
+    pass "dwmenu: the image is DriveWire drive 0, saved to bmcoco.cfg"
+else
+    fail dwmenu "dw0 not in bmcoco.cfg"
+fi
 
 echo "Missing ROMs are named by their files"
 run cp400 60 "$TESTROMS" "machine=cp400" '100 quit\n'
@@ -296,13 +308,17 @@ if [ -n "${BMCOCO_ROMS:-}" ]; then
 
     echo "Becker port (real ROMs, a stand-in DriveWire server)"
     # The IDE interface (a stand-in HDB-DOS: only its Becker port is used)
-    # in xroar.conf. BASIC writes A to the port's data register; the server
-    # answers Z, which BASIC then reads: status 2 (data waiting), then 90.
-    mkdir -p "$OUT/becker/roms"
-    for f in "$BMCOCO_ROMS"/*; do ln -s "$f" "$OUT/becker/roms/" 2>/dev/null; done
-    head -c 8192 /dev/zero > "$OUT/becker/roms/hdblba.rom"
-    printf 'machine coco2bus\nmachine-cart ide\n' > "$OUT/becker/xroar.conf"
-    python3 - "$OUT/becker/server.log" <<'EOF' &
+    # in xroar.conf. A BASIC program writes A to the port's data register,
+    # waits for the server's answer (Z) and writes it back.
+    # becker NAME CONNECT_FRAMES: connecting takes that many frames (as it
+    # can on the Pi); the CoCo goes on meanwhile, the port reading empty.
+    becker() {
+        local name=$1 frames=$2 server
+        mkdir -p "$OUT/$name/roms"
+        for f in "$BMCOCO_ROMS"/*; do ln -s "$f" "$OUT/$name/roms/" 2>/dev/null; done
+        head -c 8192 /dev/zero > "$OUT/$name/roms/hdblba.rom"
+        printf 'machine coco2bus\nmachine-cart ide\n' > "$OUT/$name/xroar.conf"
+        python3 - "$OUT/$name/server.log" <<'EOF' &
 import socket, sys
 log = open(sys.argv[1], 'w')
 s = socket.socket()
@@ -316,19 +332,64 @@ data = c.recv(16)
 log.write('got %s\n' % list(data))
 log.flush()
 c.sendall(b'Z')
-c.recv(16)
+data = c.recv(16)
+log.write('got back %s\n' % list(data))
+log.flush()
 EOF
-    server=$!
-    sleep 1
-    (cd "$OUT/becker" && printf '%s\n' '300 type POKE &HFF42,65\n' '500 type PRINT PEEK(&HFF41);PEEK(&HFF42)\n' '800 shot result.ppm' '801 quit' | \
-        BMCOCO_REFRESH=60 BMCOCO_IP=127.0.0.1 BMCOCO_CMDLINE="root=. becker_port=65511" "$SIM" > log.txt 2>&1)
-    wait $server 2>/dev/null
-    check_log becker "Becker port: connected to DriveWire server 127.0.0.1:65511" "connects to the server"
-    if grep -q "got \[65\]" "$OUT/becker/server.log" 2>/dev/null; then
-        pass "becker: the server got what BASIC wrote"
+        server=$!
+        sleep 1
+        (cd "$OUT/$name" && printf '%s\n' '300 type 10 POKE &HFF42,65\n' '500 type 20 IF PEEK(&HFF41)=0 THEN 20\n' \
+            '800 type 30 POKE &HFF42,PEEK(&HFF42)\n' '1100 type RUN\n' '2000 shot result.ppm' '2001 quit' | \
+            BMCOCO_REFRESH=60 BMCOCO_IP=127.0.0.1 BMCOCO_SIM_CONNECT_FRAMES=$frames \
+            BMCOCO_CMDLINE="root=. becker_ip=127.0.0.1 becker_port=65511" "$SIM" > log.txt 2>&1)
+        wait $server 2>/dev/null
+        check_log $name "Becker port: connected to DriveWire server 127.0.0.1:65511" "connects to the server"
+        if grep -q "got \[65\]" "$OUT/$name/server.log" 2>/dev/null; then
+            pass "$name: the server got what BASIC wrote"
+        else
+            fail $name "the server didn't get A (see out/$name/server.log)"
+        fi
+        if grep -q "got back \[90\]" "$OUT/$name/server.log" 2>/dev/null; then
+            pass "$name: BASIC read the server's answer"
+        else
+            fail $name "BASIC didn't read Z (see out/$name/server.log)"
+        fi
+    }
+    echo "The built-in DriveWire server"
+    # No server address: the Becker port talks to BMCoco's own server,
+    # with test.dsk in drive 0 (sector 1 all 7s). BASIC writes to virtual
+    # channel 0, not open (as NitrOS-9 does: just the opcode and channel),
+    # reads sector 1 (READEX), sends the checksum, then writes each byte plus one plus
+    # the error it got into sector 2 (WRITE): sector 2 of the image must
+    # then be all 8s.
+    mkdir -p "$OUT/dw/roms" "$OUT/dw/disks"
+    for f in "$BMCOCO_ROMS"/*; do ln -s "$f" "$OUT/dw/roms/" 2>/dev/null; done
+    head -c 8192 /dev/zero > "$OUT/dw/roms/hdblba.rom"
+    printf 'machine coco2bus\nmachine-cart ide\n' > "$OUT/dw/xroar.conf"
+    python3 -c "import sys; sys.stdout.buffer.write(bytes(256) + bytes([7]) * 256 + bytes(256 * 33))" > "$OUT/dw/disks/test.dsk"
+    printf 'dw0=disks/test.dsk\n' > "$OUT/dw/bmcoco.cfg"
+    (cd "$OUT/dw" && printf '%s\n' \
+        '300 type 10 DIM D(255)\n' \
+        '500 type 20 FOR I=0 TO 6:READ A:POKE &HFF42,A:NEXT\n' \
+        '900 type 30 S=0:FOR I=0 TO 255:D(I)=PEEK(&HFF42):S=S+D(I):NEXT\n' \
+        '1400 type 40 H=INT(S/256):POKE &HFF42,H:POKE &HFF42,S-H*256:E=PEEK(&HFF42)\n' \
+        '2000 type 50 FOR I=0 TO 4:READ A:POKE &HFF42,A:NEXT\n' \
+        '2400 type 60 T=0:FOR I=0 TO 255:V=D(I)+1+E:POKE &HFF42,V:T=T+V:NEXT\n' \
+        '2900 type 70 H=INT(T/256):POKE &HFF42,H:POKE &HFF42,T-H*256:R=PEEK(&HFF42)\n' \
+        '3500 type 80 DATA 100,0,210,0,0,0,1,87,0,0,0,2\n' \
+        '3900 type RUN\n' \
+        '5000 quit' | \
+        BMCOCO_REFRESH=60 BMCOCO_CMDLINE="root=." "$SIM" > log.txt 2>&1)
+    check_log dw "Becker port: the built-in DriveWire server" "the Becker port uses the built-in server"
+    if python3 -c "import sys; d = open(sys.argv[1], 'rb').read(); sys.exit(0 if d[512:768] == bytes([8]) * 256 else 1)" "$OUT/dw/disks/test.dsk"; then
+        pass "dw: BASIC read a sector and wrote one through it"
     else
-        fail becker "the server didn't get A (see out/becker/server.log)"
+        fail dw "sector 2 of test.dsk isn't all 8s"
     fi
+
+    becker becker 0
+    echo "Becker port: a server slow to answer doesn't stop the CoCo"
+    becker becker_slow 300
 fi
 
 echo

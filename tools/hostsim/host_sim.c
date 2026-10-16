@@ -25,6 +25,10 @@
  * virtual time, as on a computer too slow for it (a Pi 3 with the most
  * accurate artifact colours, say).
  *
+ * BMCOCO_SIM_CONNECT_FRAMES=N makes background work (connecting to a
+ * DriveWire server) start N frames late, as connecting does on the Pi
+ * when the server is slow to answer.
+ *
  * With BMCOCO_LIVE=PORT it runs in real time instead, with no script: the
  * screen, keyboard, gamepads and sound are in a web page at
  * http://127.0.0.1:PORT/ (live.c, live.html). tools/hostsim/live.sh starts it.
@@ -33,6 +37,7 @@
  * Raspberry Pi. See LICENSE for licensing details.
  */
 
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -148,7 +153,8 @@ static double now = 0.0;
 static double refresh = 60.0;
 static double refresh_later = 0.0;  /* refresh rate after start up */
 static double frame_work = 0.0;     /* seconds each frame's emulation takes */
-static long frame = 0;
+static volatile long frame = 0;
+static long connect_frames = 0;
 static long presents = 0;
 
 static void tick(void);
@@ -601,6 +607,39 @@ int host_network_address(char *address, unsigned size)
 	return 1;
 }
 
+/* A thread here (a Circle task on the Pi). */
+struct background {
+	void (*fn)(void *);
+	void *arg;
+};
+
+static void *background_thread(void *p)
+{
+	struct background job = *(struct background *)p;
+	long due = frame + connect_frames;
+	free(p);
+	while (frame < due)
+		usleep(1000);
+	job.fn(job.arg);
+	return NULL;
+}
+
+int host_run_in_background(void (*fn)(void *arg), void *arg)
+{
+	struct background *job = malloc(sizeof(*job));
+	pthread_t thread;
+	if (job == NULL)
+		return 0;
+	job->fn = fn;
+	job->arg = arg;
+	if (pthread_create(&thread, NULL, background_thread, job) != 0) {
+		free(job);
+		return 0;
+	}
+	pthread_detach(thread);
+	return 1;
+}
+
 void host_network_status(char *text, unsigned size)
 {
 	char ip[32];
@@ -708,6 +747,9 @@ int main(void)
 	r = getenv("BMCOCO_SIM_FRAME_MS");
 	if (r != NULL)
 		frame_work = atof(r) / 1000.0;
+	r = getenv("BMCOCO_SIM_CONNECT_FRAMES");
+	if (r)
+		connect_frames = atol(r);
 	r = getenv("BMCOCO_REFRESH_LATER");
 	if (r)
 		refresh_later = atof(r);

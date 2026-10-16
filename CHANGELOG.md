@@ -1,3 +1,17 @@
+## Unreleased
+
+- A built-in DriveWire server for the Becker port, so NitrOS-9's DriveWire
+  builds (such as NitrOS-9 EOU's `dw_becker` IDE disks) boot on the Pi with
+  no other computer: DriveWire in the menu chooses its drives 0-3 (`dw0` to
+  `dw3`) and the server (built in, or another computer's address, moved
+  there from Network). No address, `127.0.0.1` or `localhost` mean the
+  built-in one
+- Fix plugging in the IDE interface (or choosing a hard disk image) taking
+  minutes, or seeming to hang, and NitrOS-9 hanging at "Drivewire": the IDE
+  interface has a Becker port, which connected to a DriveWire server at
+  127.0.0.1, where nothing answers on the Pi, and Circle waits about 3
+  minutes for that; connecting now happens in the background
+
 ## 0.4.0 – 2026-10-15
 
 - From BMA800XL 1.2.0 to 1.4.0:
