@@ -1,4 +1,4 @@
-## Unreleased
+## 0.5.0 – 2026-10-16
 
 - A built-in DriveWire server for the Becker port, so NitrOS-9's DriveWire
   builds (such as NitrOS-9 EOU's `dw_becker` IDE disks) boot on the Pi with
