@@ -1,4 +1,4 @@
-## Unreleased
+## 0.5.1 – 2026-10-16
 
 - The web UI shows the machine running ("Tandy CoCo 3 (NTSC)"), not always
   "Tandy Color Computer"; the file list has icons for CoCo files (disks,
