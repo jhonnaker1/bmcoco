@@ -32,7 +32,7 @@ run the display at exactly the CoCo's frame rate. It is chosen with
 
 | `video_driver` | What it does |
 |---|---|
-| `kms` (default) | As `hvs`, and also sets the video mode so the display runs at the CoCo's rate: 59.92 Hz for an NTSC CoCo 1 or 2, switching when the machine does. This works for 720p and 1080p when the display lists the 60 Hz (or 50 Hz) mode, and when the machine's rate is within the 0.5 % HDMI allows: the CoCo 3 (59.70 Hz) and a PAL CoCo (50.32 Hz) are just outside, so for them the display stays at 60 or 50 Hz, as on a Pi 3 (they then run 0.5 % fast or 0.6 % slow, which nothing notices). |
+| `kms` (default) | As `hvs`, and also sets the video mode so the display runs at the CoCo's rate: 59.92 Hz for an NTSC CoCo 1 or 2, switching when the machine does. This works for 720p and 1080p when the display lists the 60 Hz (or 50 Hz) mode, and when the machine's rate is within the 0.5 % HDMI allows. The CoCo 3 (59.70 Hz) and a PAL CoCo or Dragon (50.32 Hz) are just outside, so for them the display is set to the standard 60 or 50 Hz mode, and the frames are locked to that, as on a Pi 3 with the right `hdmi_mode` (they then run 0.5 % fast or 0.6 % slow, which nothing notices). |
 | `hvs` | Keeps the mode set in `config.txt`. Use it for a TV that goes blank for a while when the refresh rate changes. |
 | `firmware` | The firmware's framebuffer, with the picture scaled by the ARM. Use it if the others give trouble. |
 

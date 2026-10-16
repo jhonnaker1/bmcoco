@@ -210,8 +210,9 @@ void ThrottledField(char *out, unsigned out_size) {
   }
 }
 
-// Copies s into out as the inside of a JSON string. Profile names come from
-// the menu, so they're plain text; anything else is replaced.
+// Copies s into out as the inside of a JSON string (the machine's name,
+// which can come from a settings file); characters other than plain text
+// are replaced.
 void JsonText(const char *s, char *out, unsigned out_size) {
   unsigned n = 0;
   for (; *s != '\0' && n + 2 < out_size; s++) {
@@ -245,6 +246,9 @@ void HandleStatus(CSocket *socket) {
     return;
   }
 
+  char machine[128];
+  JsonText(WebUiMachineName(), machine, sizeof(machine));
+
   char body[1024];
   int length = snprintf(
       body, sizeof(body),
@@ -252,7 +256,7 @@ void HandleStatus(CSocket *socket) {
       "\"model\":\"%s\",\"ip\":\"%s\",\"net_status\":%d,\"net_text\":\"%s\","
       "\"uptime_secs\":%u,\"soc_temp_c\":%s,\"throttled\":%s,"
       "\"caps\":%s}",
-      WEBUI_HOSTNAME, BMCOCO_VERSION, BMCOCO_GIT, WebUiMachineGet()->name,
+      WEBUI_HOSTNAME, BMCOCO_VERSION, BMCOCO_GIT, machine,
       model != 0 ? model : "",
       have_ip ? ip : "", net_status, NetStatusText(net_status), uptime,
       soc_temp, throttled, caps);

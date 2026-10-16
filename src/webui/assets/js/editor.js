@@ -15,13 +15,8 @@ let session = null;
 
 const ta = () => $("ed-text");
 
-const nameInput = () => $("ed-name");
-
-// A BASIC program can also be changed by saving it under another name.
 function isDirty() {
-  return session.loaded &&
-    (ta().value !== session.original ||
-     (session.basic && nameInput().value !== session.origName));
+  return session.loaded && ta().value !== session.original;
 }
 
 function setMsg(text, isErr) {
@@ -30,12 +25,7 @@ function setMsg(text, isErr) {
 }
 
 function canSave() {
-  let ok = session.loaded && !session.busy && isDirty();
-  if (session.basic) {
-    ok = ok && nameInput().value.trim() !== "" &&
-      (!session.isNew || ta().value.trim() !== "");
-  }
-  return ok;
+  return session.loaded && !session.busy && isDirty();
 }
 
 function refreshButtons() {
@@ -140,7 +130,7 @@ async function save(andReboot) {
 
 // Keep Tab / Shift+Tab inside the dialog while it is open.
 function trapTab(ev) {
-  const items = Array.from($("editor").querySelectorAll("button, textarea, input"))
+  const items = Array.from($("editor").querySelectorAll("button, textarea"))
     .filter((el) => !el.disabled);
   if (!items.length) return;
   const first = items[0];
@@ -154,16 +144,9 @@ function trapTab(ev) {
   }
 }
 
-// Shows the overlay for `s`, laid out for a text file or a BASIC program.
-function show(s) {
-  const basic = s.basic;
-  $("ed-name-row").hidden = !basic;
-  $("ed-save-reboot").hidden = basic;
-  $("ed-save").textContent = basic ? "Save PRG" : "Save";
-  ta().setAttribute("aria-label", basic ? "BASIC listing" : "File contents");
-  ta().placeholder = basic && s.isNew ? '10 PRINT "HELLO"\n20 GOTO 10' : "";
+// Shows the overlay.
+function show() {
   ta().readOnly = false;
-  nameInput().disabled = false;
   $("editor").hidden = false;
   document.body.classList.add("modal-open");
 }
@@ -174,7 +157,7 @@ export function openEditor({ vol, path, name }) {
 
   return new Promise((resolve) => {
     const s = session = {
-      vol, path, name, resolve, basic: false,
+      vol, path, name, resolve,
       original: "", crlf: false, loaded: false, busy: false,
       opener: document.activeElement,
     };
@@ -185,7 +168,7 @@ export function openEditor({ vol, path, name }) {
     ta().value = "";
     ta().disabled = true;
     setMsg("Loading…");
-    show(s);
+    show();
     refreshButtons();
     $("ed-cancel").focus();
     load(s);
@@ -198,7 +181,6 @@ export function initEditor() {
   $("ed-save").addEventListener("click", () => save(false));
   $("ed-save-reboot").addEventListener("click", () => save(true));
   ta().addEventListener("input", refreshButtons);
-  nameInput().addEventListener("input", refreshButtons);
 
   $("editor").addEventListener("keydown", (ev) => {
     if (!session) return;

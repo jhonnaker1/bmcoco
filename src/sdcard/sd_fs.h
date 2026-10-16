@@ -1,6 +1,6 @@
-// File access on the SD card, for BMC64's own code: the updater, profiles,
-// the web UI, the log file and the Wi-Fi checks. Paths are absolute on the
-// card ("/C64/rpi_pos.vkm"); the card's volume is added here.
+// File access on the SD card, for the code from BMC64: the web UI, the log
+// file and the Wi-Fi checks. Paths are absolute on the card
+// ("/bmcoco.cfg"); the card's volume is added here.
 //
 // sd_fs_fatfs.c implements this on the Pi with FatFs; tools/sdcard/
 // sd_fs_posix.c implements it on a folder of a PC for the tests.

@@ -37,13 +37,14 @@ framebuffer_ignore_alpha=1
 
 # Video: 1280x720 at 60 Hz, the right rate for an NTSC CoCo (the default).
 # For a PAL CoCo or a Dragon use 50 Hz instead: hdmi_mode=19 (here, and
-# hdmi_mode:1=19 for HDMI1 below).
+# hdmi_mode:1=19 for HDMI1 below), on a Pi Zero, 2 or 3.
 # The emulator's frames are locked to the display when its refresh rate
 # matches the CoCo's, which gives perfectly smooth scrolling. On the Pi 4,
-# Pi 400 and Pi 5 BMCoco sets the display to an NTSC CoCo 1/2's exact rate
-# itself (the CoCo 3 and PAL CoCos stay at 60 or 50 Hz, see docs/PI4.md);
-# hdmi_mode only chooses the resolution on the Pi 4 (the Pi 5's firmware
-# uses the display's preferred one; choose it under Video, Resolution).
+# Pi 400 and Pi 5 BMCoco sets the display's rate itself: an NTSC CoCo 1/2's
+# exact rate, or 60 or 50 Hz for the CoCo 3 and PAL machines (see
+# docs/PI4.md); hdmi_mode only chooses the resolution on the Pi 4 (the Pi
+# 5's firmware uses the display's preferred one; choose it under Video,
+# Resolution).
 disable_overscan=1
 hdmi_group=1
 hdmi_mode=4

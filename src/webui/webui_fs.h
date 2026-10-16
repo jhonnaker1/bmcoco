@@ -46,9 +46,8 @@ void WebUiFsUpload(CSocket *socket, const char *query,
                    long content_length);
 
 // POST /api/fs/save?vol=SD&path=/settings.txt  <- the raw request body
-// replaces one of the editable root-level config files (vice.ini, settings*.txt,
-// cmdline.txt, config.txt, machines.txt, wpa_supplicant.conf) or a keyboard
-// mapping file (*.vkm) in any folder: up to 256 KB of
+// replaces one of the editable config files (cmdline.txt, config.txt,
+// wpa_supplicant.conf, xroar.conf, bmcoco.cfg): up to 256 KB of
 // text, no NUL bytes. Written to "<name>.part", with the previous version
 // kept as "<name>.bak". Arguments are as for WebUiFsUpload. GET /api/fs/list
 // marks the editable entries with "edit":true.
@@ -74,9 +73,10 @@ void WebUiFsMkdir(CSocket *socket, const char *query);
 // answered if the new name is taken (a change of case only is allowed).
 void WebUiFsRename(CSocket *socket, const char *query);
 
-// POST /api/fs/autostart?vol=SD&path=/dir/file.d64  -> queue the file to
-// be autostarted on the emulator (disk/tape image or PRG), like the
-// menu's Autostart. Answers 202 once queued; the outcome isn't reported.
+// POST /api/fs/autostart?vol=SD&path=/disks/x.dsk  -> queue the file to
+// be started on the emulator (a disk or tape image, cartridge or
+// program), like the menu's Run a Program. Answers 202 once queued; the
+// outcome isn't reported.
 void WebUiFsAutostart(CSocket *socket, const char *query);
 
 #endif

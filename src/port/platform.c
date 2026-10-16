@@ -668,6 +668,14 @@ static void check_rom(char *list, size_t size, const char *rom)
 	strncat(list, rom[0] == '@' ? rom + 1 : rom, size - strlen(list) - 1);
 }
 
+const char *bmcoco_machine_description(void)
+{
+	struct machine_config *mc = xroar.machine_config;
+	if (mc == NULL)
+		return "";
+	return mc->description ? mc->description : mc->name;
+}
+
 const char *bmcoco_missing_roms(void)
 {
 	static char missing[128];

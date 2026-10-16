@@ -62,6 +62,8 @@ int bmcoco_turbo(void);
 void bmcoco_set_turbo(int on);
 /* Names of the ROM files the current machine needs and that are missing,
    or NULL if it has them all. */
+/* The machine running, as XRoar describes it (for the web UI), or "". */
+const char *bmcoco_machine_description(void);
 const char *bmcoco_missing_roms(void);
 /* Reboot or power off, closing files first. */
 void bmcoco_request_power(int power_off);

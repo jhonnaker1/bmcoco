@@ -1,5 +1,5 @@
 // Files view: browse the SD card, upload, download, rename, delete, create
-// folders, autostart, and open the config-file and BASIC editors. Each row has one
+// folders, autostart, and open the config-file editor. Each row has one
 // "Actions" button that opens a menu of what applies to that entry;
 // clicking the name does the most common one (open a folder, run, edit).
 
@@ -15,8 +15,11 @@ let fbPath = "/";
 let fbNames = new Set(); // file names in the current folder (for overwrite checks)
 
 const FILE_ICONS = {
-  d64: "▣", d71: "▣", d81: "▣", d82: "▣", g64: "▣", t64: "▣", tap: "▤",
-  prg: "▶", crt: "▦", sid: "♪", txt: "≣", nfo: "≣", zip: "▤",
+  dsk: "▣", vdk: "▣", jvc: "▣", os9: "▣", dmk: "▣", ide: "▣", vhd: "▣", img: "▣",
+  cas: "▤", c10: "▤", k7: "▤", wav: "▤",
+  ccc: "▦", rom: "▦",
+  bin: "▶", hex: "▶", s19: "▶", bas: "▶",
+  txt: "≣", zip: "▤",
 };
 
 const extOf = (name) => (name.split(".").pop() || "").toLowerCase();
@@ -26,10 +29,10 @@ function isRunnable(name) {
   return canRun(extOf(name));
 }
 
-// Disks, tapes and programs are autostarted, like the menu's Autostart item;
-// a cartridge image is attached (which resets the machine).
+// Disks, tapes and programs are autostarted, like the menu's Run a Program;
+// a cartridge image is plugged in (which resets the machine).
 const runVerb = (name) =>
-  extOf(name) === "crt" ? "Attach cartridge" : "Autostart";
+  ["ccc", "rom"].includes(extOf(name)) ? "Plug in cartridge" : "Autostart";
 
 function fileIcon(name, isDir) {
   if (isDir) return "▸";

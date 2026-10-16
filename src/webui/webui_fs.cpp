@@ -935,7 +935,7 @@ void WebUiFsAutostart(CSocket *socket, const char *query) {
   }
 
   // Runs later on the emulator core, through stdio, so it gets the path
-  // with the card's volume ("SD:/games/x.d64").
+  // with the card's volume ("SD:/disks/x.dsk").
   char volume_path[600];
   if ((unsigned) snprintf(volume_path, sizeof(volume_path), "%s:%s",
                           circle_get_disk_volume(), clean) >=

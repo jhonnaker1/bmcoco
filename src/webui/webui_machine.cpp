@@ -21,6 +21,9 @@
 
 #include <stdio.h>
 
+// The machine running (src/port/platform.c).
+extern "C" const char *bmcoco_machine_description(void);
+
 namespace {
 
 // What XRoar can start directly (xroar_load_file_by_type): disk images,
@@ -31,7 +34,7 @@ const char *const kRunTypes[] = {
 };
 
 const WebUiMachine kMachine = {
-    "Tandy Color Computer", "/xroar.conf", kRunTypes, "",
+    "/xroar.conf", kRunTypes,
 };
 
 char Lower(char c) {
@@ -43,6 +46,8 @@ char Lower(char c) {
 const WebUiMachine *WebUiMachineGet(void) {
   return &kMachine;
 }
+
+const char *WebUiMachineName(void) { return bmcoco_machine_description(); }
 
 boolean WebUiMachineCanRun(const char *ext) {
   for (const char *const *type = kMachine.run_types; *type != 0; type++) {
@@ -69,8 +74,8 @@ int WebUiMachineCapsJson(char *out, unsigned size) {
   run[used] = '\0';
 
   int length = snprintf(out, size,
-                        "{\"settings\":\"%s\",\"run\":[%s],\"basic\":\"%s\"}",
-                        kMachine.settings, run, kMachine.basic);
+                        "{\"settings\":\"%s\",\"run\":[%s]}",
+                        kMachine.settings, run);
   if (length < 0 || (unsigned) length >= size) return -1;
   return length;
 }

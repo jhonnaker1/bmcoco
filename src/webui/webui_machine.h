@@ -1,10 +1,10 @@
 //
 // webui_machine.h
 //
-// What the web UI can do on the machine this build emulates: its name,
-// the file types Autostart accepts, the BASIC dialect the listing editor
-// understands, and Main's settings file. GET /api/status reports these as
-// "caps" so the page needs no machine knowledge of its own.
+// What the web UI can do on the machine this build emulates: the machine
+// running, the file types Autostart accepts, and the emulator's settings
+// file. GET /api/status reports these as "caps" so the page needs no
+// machine knowledge of its own.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,18 +24,17 @@
 #include <circle/types.h>
 
 struct WebUiMachine {
-  // Machine name as profiles use it ("C64", "C128", "VIC20", "Plus4",
-  // "Pet").
-  const char *name;
-  // Main's usual settings file.
+  // The emulator's settings file.
   const char *settings;
   // Lowercase extensions Autostart accepts, ending with a null.
   const char *const *run_types;
-  // BASIC dialect of the listing editor ("v2"), or "" for none.
-  const char *basic;
 };
 
 const WebUiMachine *WebUiMachineGet(void);
+
+// The machine running, as XRoar describes it ("Tandy CoCo 3 (NTSC)"), or ""
+// before one has started.
+const char *WebUiMachineName(void);
 
 // TRUE if Autostart accepts files with this extension (any case).
 boolean WebUiMachineCanRun(const char *ext);

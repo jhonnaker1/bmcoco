@@ -60,7 +60,10 @@ void ParseEdid(const uint8_t *data, unsigned blocks, Edid *edid);
 // The mode to run at FPS frames a second, with the resolution of CURRENT:
 // its 50 Hz or 60 Hz sibling (whichever is nearer FPS), with the pixel
 // clock moved (within CTA-861's 0.5 %) to make the refresh exactly FPS.
-// False if there is none, or the display doesn't list it.
+// When FPS is further off than that (a CoCo 3's 59.70 Hz, a PAL CoCo's
+// 50.32 Hz), the sibling as it is: the emulator then locks to its 50 or 60
+// Hz, a little off its own rate, as on a Pi 3. False if there is none, or
+// the display doesn't list it.
 bool ChooseMode(const Timing &current, double fps, const Edid &edid,
                 Timing *chosen);
 

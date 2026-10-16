@@ -1,3 +1,20 @@
+## Unreleased
+
+- The web UI shows the machine running ("Tandy CoCo 3 (NTSC)"), not always
+  "Tandy Color Computer"; the file list has icons for CoCo files (disks,
+  tapes, cartridges, programs) and offers "Plug in cartridge" for `.ccc`
+  and `.rom` files
+- Pi 4 and 5: a PAL CoCo or Dragon gets a 50 Hz display, and the frame
+  lock, without `hdmi_mode=19` (on a Pi 5, which ignores `hdmi_mode`, it
+  was shown at 60 Hz, unlocked). Rates just outside what HDMI allows (PAL's
+  50.32 Hz, the CoCo 3's 59.70 Hz) now get the standard 50 or 60 Hz mode
+  instead of keeping whatever mode the display had
+- The web UI no longer carries BMC64's BASIC listing editor, which BMCoco
+  never used
+- Docs: the SD card's README lists every Pi BMCoco runs on and the newer
+  menu pages; the User Guide says which machines a Pi 4 or 5 runs at their
+  exact rate (NTSC CoCo 1 and 2)
+
 ## 0.5.0 – 2026-10-16
 
 - A built-in DriveWire server for the Becker port, so NitrOS-9's DriveWire

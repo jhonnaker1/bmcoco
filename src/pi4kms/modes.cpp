@@ -127,11 +127,11 @@ bool ChooseMode(const Timing &current, double fps, const Edid &edid,
   }
   *chosen = *base;
   double clock = (double)base->HTotal() * base->VTotal() * fps;
-  // CTA-861 allows the pixel clock to be 0.5 % off.
-  if (clock < base->pixel_hz * 0.995 || clock > base->pixel_hz * 1.005) {
-    return false;
+  // CTA-861 allows the pixel clock to be 0.5 % off; further than that, the
+  // mode keeps its own clock.
+  if (clock >= base->pixel_hz * 0.995 && clock <= base->pixel_hz * 1.005) {
+    chosen->pixel_hz = (uint32_t)(clock + 0.5);
   }
-  chosen->pixel_hz = (uint32_t)(clock + 0.5);
   return true;
 }
 

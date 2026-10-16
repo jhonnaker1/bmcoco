@@ -160,10 +160,15 @@ gives perfectly smooth scrolling (the CoCo then runs 0.1% fast, which
 nothing notices). Otherwise the emulation keeps exact time and frames are
 shown as they come. The About page shows which is in use.
 
-For a PAL CoCo or a Dragon (50 Hz), choose it in *Machine* and set
-`hdmi_mode=19` (720p 50 Hz) in `config.txt` (on a Pi 2 or 3; a Pi 4 sets
-the display to the machine's exact rate itself, NTSC or PAL). `vsync=on` or `vsync=off` in
-`cmdline.txt` (or *Frame Lock* in the menu) forces one or the other.
+For a PAL CoCo or a Dragon (50 Hz), choose it in *Machine*. A Pi 4 or 5
+switches the display between 50 and 60 Hz itself, and runs an NTSC CoCo 1
+or 2 at its exact rate; the CoCo 3 (59.70 Hz) and PAL machines (50.32 Hz)
+are just outside what HDMI allows, so they get the standard 60 or 50 Hz,
+and run 0.5 % fast or 0.6 % slow (see [PI4.md](PI4.md)). On a Pi Zero, 2
+or 3 (or a Pi 4 with `video_driver=hvs` or `firmware`), set
+`hdmi_mode=19` (720p 50 Hz) in `config.txt` for a PAL machine.
+`vsync=on` or `vsync=off` in `cmdline.txt` (or *Frame Lock* in the menu)
+forces one or the other.
 
 **Artifact colours**: many CoCo 1/2 games draw in PMODE 4 and rely on the
 way an NTSC TV smears its black and white dots into red and blue. *TV
@@ -172,8 +177,8 @@ appeared depended on luck at power on, so if a game's colours are swapped
 choose the other phase (blue-red or red-blue). *S-Video* shows the dots in
 black and white. The *Artifact Colours* renderer chooses between a quick
 table (*Simple*, *5-bit*) and XRoar's simulation of an NTSC TV
-(*Partial*, *Simulated*: the most accurate, but too much for a Pi 2 or 3,
-which then falls behind; use them on a Pi 4).
+(*Partial*, *Simulated*: the most accurate, but too much for a Pi Zero,
+2 or 3, which then falls behind; use them on a Pi 4 or 5).
 
 **When the Pi can't keep up**: if frames take longer to emulate than the
 display shows them for (the most accurate artifact colours on a Pi 3, or a

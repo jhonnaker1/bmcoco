@@ -25,7 +25,7 @@ export async function loadMachine() {
   }
 }
 
-// Machine name, e.g. "Tandy Color Computer".
+// Machine name, e.g. "Tandy CoCo 3 (NTSC)".
 export const machineName = () => current.name;
 
 // Name for display.
