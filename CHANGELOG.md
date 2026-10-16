@@ -1,3 +1,13 @@
+## 0.5.2 – 2026-10-16
+
+- Fix the sound clicking or sounding wrong (PLAY on a CoCo 3, for one): a
+  CoCo 3 (59.69 Hz) locked to a 60 Hz display, or a PAL CoCo (50.32 Hz) to
+  50 Hz, runs up to 0.6% fast, more than BMCoco's corrections (one sample in
+  512) could take up, so the sound buffer filled and what didn't fit was cut
+  off. The sound is now squeezed or stretched smoothly, by up to 2%
+- Simulator: BMCOCO_SIM_WAV saves the sound, BMCOCO_SIM_CPU shows how hard
+  each screen is to emulate
+
 ## 0.5.1 – 2026-10-16
 
 - The web UI shows the machine running ("Tandy CoCo 3 (NTSC)"), not always
