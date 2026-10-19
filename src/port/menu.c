@@ -573,13 +573,14 @@ static const char *cart_name(int id)
 
 static void cart_menu(void)
 {
-	enum { C_NONE = -10, C_FILE = -11 };
+	enum { C_NONE = -10, C_FILE = -11, C_RS232 = -12 };
 	struct osd_item items[64];
 	struct slist *l, *list;
 	const char *arch = cart_arch();
 	int n = 0, sel = 0, chosen;
 
 	items[n++] = (struct osd_item){"Load Cartridge File...", NULL, OSD_ITEM_SUBMENU, C_FILE};
+	items[n++] = (struct osd_item){"RS-232 Pak (Modem)", NULL, check(bmcoco_rs232_enabled()), C_RS232};
 	items[n++] = (struct osd_item){"", NULL, OSD_ITEM_LABEL, -1};
 	items[n++] = (struct osd_item){"None", state.cart_id == 0 ? "*" : NULL, 0, C_NONE};
 	list = arch ? cart_config_list_is_a(arch) : NULL;
@@ -594,7 +595,14 @@ static void cart_menu(void)
 	slist_free(list);
 
 	chosen = osd_menu("Cartridge", items, n, &sel);
-	if (chosen == C_FILE) {
+	if (chosen == C_RS232) {
+		save_setting("rs232", bmcoco_rs232_enabled() ? "0" : "1");
+		bmcoco_rs232_settings_changed();
+		if (bmcoco_rs232_enabled())
+			osd_message("The RS-232 Pak is at $FF68, beside the cartridge, with a "
+			            "virtual modem: ATDT host:port calls a telnet BBS. It needs "
+			            "the network.", TRUE);
+	} else if (chosen == C_FILE) {
 		char path[512];
 		if (browse("Load Cartridge", cart_exts, path, sizeof(path)))
 			xroar_load_file_by_type(path, 1);

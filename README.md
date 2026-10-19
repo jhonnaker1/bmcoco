@@ -33,7 +33,8 @@ available; see the [third-party](docs/THIRD_PARTY.md) acknowledgements.
 - A menu (F12) for everything: programs, disks, tapes, cartridges, machine,
   joysticks, video, keyboard, sound, network
 - Optional Ethernet or Wi-Fi with BMC64's web UI: manage the SD card from a
-  browser and start programs
+  browser and start programs; and an RS-232 Pak with a virtual modem, to
+  call telnet BBSes from CoCo terminal programs (`ATDTbbs.example.com:23`)
 
 ## ROMs
 

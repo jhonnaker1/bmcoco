@@ -61,7 +61,7 @@ next item starting with it.
 | Hard Disks     | Hard disk images for drives 0 and 1 of an IDE interface (see Hard disks) |
 | DriveWire      | The DriveWire server for the Becker port, built in or on another computer, and the built-in one's drives 0-3 (see The Becker port) |
 | Cassette       | Insert a tape (then type `CLOAD` or `CLOADM`), rewind, eject, fast loading |
-| Cartridge      | Plug in a cartridge file, one of XRoar's built in cartridges (Disk BASIC and others), or none |
+| Cartridge      | Plug in a cartridge file, one of XRoar's built in cartridges (Disk BASIC and others), or none; and the RS-232 Pak with its virtual modem (see below) |
 | Machine        | CoCo 1, 2 or 3, PAL or NTSC, with or without a 6309, and the other machines XRoar emulates. Machines without ROMs are marked |
 | Memory         | The machine's RAM: 128K, 512K, 1M or 2M for a CoCo 3, 4K to 64K for a CoCo 1 or 2 (or a Dragon). The machine is reset with it, and it is kept for that machine |
 | Joysticks      | What is plugged into each joystick port, which gamepad is which joystick, GPIO joysticks, and a joystick test |
@@ -240,6 +240,47 @@ address, in the background (the CoCo keeps running), and tries again every
 address of `127.0.0.1` or `localhost`, as in an `xroar.conf` from a PC,
 means the built-in server: nothing else can listen there on the Pi.
 
+## The RS-232 Pak and calling BBSes
+
+BMCoco can add Tandy's RS-232 Pak, with a virtual modem on its cable, for
+calling telnet BBSes from CoCo terminal programs: the Deluxe RS-232
+Program Pak, Ultimaterm, Mikey-Term, Greg-E-Term and others written for the
+Pak (a 6551 at `$FF68`), and NitrOS-9's `/T2`. Turn on *RS-232 Pak
+(Modem)* in the menu's *Cartridge* page (`rs232=1` in `cmdline.txt`), and
+networking.
+
+The Pak goes in beside the cartridge plugged in, as if both were in a
+Multi-Pak: Disk BASIC's controller usually is, so terminal programs can be
+loaded from disk. With no cartridge at all the Pak isn't there either; a
+terminal program on a cartridge (the Deluxe RS-232 Program Pak's ROM, from
+*Load Cartridge File*) is the cartridge then.
+
+In the terminal program, type:
+
+```
+ATDTbbs.example.com:23
+```
+
+with the BBS's name or IP address and its port (23, telnet's, if there is
+none). The call is made in the background, so the CoCo keeps running
+while it connects: `CONNECT` (with the Pak's baud rate) when it does, `NO
+CARRIER` if nobody answers (which can take a few minutes for an address
+where nothing is there at all). Any key while it dials stops it.
+
+Other commands: `+++` (with a second of quiet before and after) to get
+back to the modem with the call kept, `ATH` to hang up, `ATO` to go back
+online, `ATZ` to reset the modem, `ATE0` / `ATE1` echo off and on, `ATV0` /
+`ATV1` number or word replies, `ATQ1` no replies, `ATI` what it is. The
+settings terminal programs set modems up with (`AT&F`, `&C1`, `&D2`,
+`S0=0`, `X4` and so on) answer `OK`. Dropping DTR (as many programs do to
+hang up) hangs up too. The modem doesn't answer calls (`ATA` says `NO
+CARRIER`).
+
+The Pak takes bytes as fast as the program reads them and sends them at
+once, whatever the baud rate set. Its interrupt goes to the cartridge
+port's CART line, as on the real Pak; programs that use it (rather than
+watching the status register) haven't been tried yet.
+
 ## Networking and the web UI
 
 BMCoco can join your network over Ethernet or Wi-Fi and serve a web page
@@ -332,6 +373,7 @@ web UI.
 | `mouse_speed`       | percent                      | `100`    | How far the mouse moves the pointer (see Joysticks) |
 | `ram_NAME`          | K, e.g. `ram_coco3=2048`     | machine's | The RAM of machine NAME (the menu's *Memory*) |
 | `hd0`, `hd1`, `hd_cart` | paths, a cartridge name  | none     | Hard disk images and their cartridge (the menu's *Hard Disks*) |
+| `rs232`             | `0`, `1`                     | `0`      | The RS-232 Pak with a virtual modem, beside the cartridge (Cartridge, RS-232 Pak) |
 | `becker_ip`, `becker_port` | address, port         | none (built in), `65504` | The Becker port's DriveWire server on another computer |
 | `dw0` ... `dw3`     | paths                        | none     | The built-in DriveWire server's disk images (the menu's *DriveWire*) |
 | `gpio_joysticks`    | `0`, `1`                     | `0`      | Joysticks on the GPIO header |
@@ -392,6 +434,12 @@ goes back to its own mode and keeps it.
 enlarge the picture and crop its edges (overscan). Make *Video*, *Screen
 Size* smaller (90% usually does), or turn overscan off on the TV ("Just
 Scan", "Screen Fit" or "1:1").
+
+**A terminal program can't reach a BBS**: check that *RS-232 Pak (Modem)*
+is on in *Cartridge*, that a cartridge is plugged in (Disk BASIC's
+controller, say), that the network is on, and the BBS's address and port:
+`ATDT` then the name or IP address, a colon, and the port. `NO CARRIER`
+means nothing answered there.
 
 **A program seems stuck loading**: watch the bottom left of the screen.
 While a floppy disk is read, a red light shows there with the drive (D),

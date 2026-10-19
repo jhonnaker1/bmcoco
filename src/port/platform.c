@@ -767,6 +767,7 @@ static void *ui_new(void *cfg)
 	hk_init();
 	bmcoco_menu_attach();
 	disk_activity_attach();
+	bmcoco_rs232_settings_changed();
 	apply_ram_settings();
 	return ui;
 }
@@ -1364,6 +1365,7 @@ void bmcoco_main(void)
 		}
 
 		xroar_run(EVENT_MS(10));
+		bmcoco_rs232_frame();
 		pace();
 
 		now = host_time();

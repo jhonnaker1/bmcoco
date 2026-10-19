@@ -1,3 +1,18 @@
+## Unreleased
+
+- The RS-232 Pak, with a virtual modem: Cartridge, *RS-232 Pak (Modem)*
+  (`rs232=1`) puts a 6551 at `$FF68` beside the cartridge plugged in, for
+  CoCo terminal programs and NitrOS-9's `/T2`, and `ATDTbbs.example.com:23`
+  calls a telnet BBS, in the background (`CONNECT`, or `NO CARRIER`), with
+  `+++`, `ATH`, `ATO`, `ATZ` and the rest. XRoar has no RS-232 Pak; it is
+  BMCoco's own (`src/port/rs232.c`). See "The RS-232 Pak and calling
+  BBSes" in the User Guide
+- Tests: the stand-in HDB-DOS ROM is no longer written through a link into
+  BMCOCO_ROMS; dialling a stand-in BBS through the RS-232 Pak, +++ and ATH,
+  and a call nobody answers
+- Merged BMA800XL c33adfd: `build_sdcard.sh` runs the PC tests first
+  (`--skip-tests` leaves them out)
+
 ## 0.5.3 – 2026-10-19
 
 - Pi Zero, 2, 3 and 4: run the ARM at its full clock. Without an operating

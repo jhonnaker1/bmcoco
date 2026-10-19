@@ -78,6 +78,12 @@ void bmcoco_pad_keys(void);
 int bmcoco_joystick_pad(int n);
 void bmcoco_joystick_settings_changed(void);
 
+/* The RS-232 Pak with its virtual modem (rs232.c): the rs232 option read
+   again, and its work once a frame. */
+void bmcoco_rs232_settings_changed(void);
+int bmcoco_rs232_enabled(void);
+void bmcoco_rs232_frame(void);
+
 /* menu.c */
 void bmcoco_menu(void);
 /* Starts following XRoar's state; from the user interface module. */

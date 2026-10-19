@@ -404,7 +404,7 @@ PYEOF
     # On the Pi the C library's socket calls hold its open files' lock while
     # they wait: a connect() in the background then hung the Pi as soon as
     # the emulator opened a file. The port must use host_tcp_* instead.
-    if grep -nE '(^|[^_a-z])(connect|recv|send|socket|getaddrinfo) *\(' "$HERE/../../src/port/"*.c > /dev/null; then
+    if grep -nE '(^|[^_a-zA-Z])(connect|recv|send|socket|accept|bind|listen|gethostbyname|getaddrinfo)\(' "$HERE/../../src/port/"*.c > /dev/null; then
         fail sockets "src/port calls the C library's sockets (use host_tcp_*)"
     else
         pass "sockets: the port uses host_tcp_*, not the C library's sockets"
@@ -509,6 +509,88 @@ EOF
     becker becker 0
     echo "Becker port: a server slow to answer doesn't stop the CoCo"
     becker becker_slow 300
+
+    echo "The RS-232 Pak and its virtual modem"
+    # Color BASIC dials through the Pak's 6551 ($FF68 data, $FF69 status),
+    # as a terminal program does, collects what comes back (its echo, the
+    # modem's CONNECT and the server's WELCOME) and sends it to the server,
+    # which checks it; then +++ (with quiet before and after) and ATH hang
+    # up. The connection is made 120 frames late (in the background), and
+    # every frame must still be shown. Then a port nothing listens on (NO
+    # CARRIER), and the Pak switched off ($FF68 isn't answered).
+    rs232_basic() {
+        printf '%s\n' "300 type 10 A\$=\"ATDT127.0.0.1:$1\":GOSUB 100\\n" \
+            '700 type 20 B$="":FOR J=1 TO 800:IF PEEK(65385) AND 8 THEN B$=B$+CHR$(PEEK(65384))\n' \
+            '1300 type 30 NEXT:A$=B$:GOSUB 100\n' \
+            '1600 type 40 FOR J=1 TO 1500:NEXT:POKE 65384,43:POKE 65384,43:POKE 65384,43:FOR J=1 TO 1500:NEXT\n' \
+            '2300 type 50 A$="ATH":GOSUB 100:END\n' \
+            '2700 type 100 FOR I=1 TO LEN(A$):POKE 65384,ASC(MID$(A$,I,1)):NEXT:POKE 65384,13:RETURN\n' \
+            '3400 type RUN\n' '9000 audio' '9001 quit'
+    }
+    for name in rs232 rs232_nc rs232_off; do
+        mkdir -p "$OUT/$name/roms"
+        for f in "$BMCOCO_ROMS"/*; do ln -s "$f" "$OUT/$name/roms/" 2>/dev/null; done
+    done
+    python3 - "$OUT/rs232/server.log" <<'EOF' &
+import socket, sys
+log = open(sys.argv[1], 'w')
+s = socket.socket()
+s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+s.bind(('127.0.0.1', 65517))
+s.listen(1)
+s.settimeout(90)
+c, _ = s.accept()
+log.write('connected\n')
+log.flush()
+c.sendall(b'WELCOME\r\n')
+c.settimeout(90)
+got = b''
+while True:
+    d = c.recv(256)
+    if not d:
+        break
+    got += d
+log.write('got back %r\n' % got)
+log.write('closed\n')
+log.flush()
+EOF
+    server=$!
+    sleep 1
+    (cd "$OUT/rs232" && rs232_basic 65517 | BMCOCO_SIM_CONNECT_FRAMES=120 BMCOCO_IP=127.0.0.1 \
+        BMCOCO_CMDLINE="root=. rs232=1" "$SIM" > log.txt 2>&1)
+    kill $server 2>/dev/null
+    wait $server 2>/dev/null
+    check_log rs232 "RS-232 Pak: connected to 127.0.0.1:65517" "ATDT connects (in the background)"
+    if grep -q "got back .*CONNECT.*WELCOME" "$OUT/rs232/server.log" 2>/dev/null; then
+        pass "rs232: the CoCo got CONNECT and the server's WELCOME, and sent them back"
+    else
+        fail rs232 "the CoCo didn't get CONNECT and WELCOME (see out/rs232/server.log)"
+    fi
+    if grep -q "got back .*+++" "$OUT/rs232/server.log" && grep -q "^closed" "$OUT/rs232/server.log" && \
+       ! grep -q "the call ended" "$OUT/rs232/log.txt"; then
+        pass "rs232: +++ and ATH hung up"
+    else
+        fail rs232 "+++ and ATH didn't hang up (see out/rs232/server.log and log.txt)"
+    fi
+    (cd "$OUT/rs232_nc" && rs232_basic 65518 | BMCOCO_SIM_CONNECT_FRAMES=120 BMCOCO_IP=127.0.0.1 \
+        BMCOCO_CMDLINE="root=. rs232=1" "$SIM" > log.txt 2>&1)
+    check_log rs232_nc "RS-232 Pak: can't connect to 127.0.0.1:65518" "a call nobody answers fails"
+    for name in rs232 rs232_nc; do
+        line=$(grep "frames presented" "$OUT/$name/log.txt" | tail -1)
+        presented=$(echo "$line" | sed 's/.*: \([0-9]*\) frames presented/\1/')
+        if [ "${presented:-0}" -ge 9000 ]; then
+            pass "$name: the CoCo kept going while dialling ($presented/9000 frames)"
+        else
+            fail $name "frames presented: $line"
+        fi
+    done
+    (cd "$OUT/rs232_off" && rs232_basic 65518 | BMCOCO_IP=127.0.0.1 \
+        BMCOCO_CMDLINE="root=." "$SIM" > log.txt 2>&1)
+    if grep -q "RS-232 Pak:" "$OUT/rs232_off/log.txt"; then
+        fail rs232_off "the Pak answered while switched off"
+    else
+        pass "rs232_off: switched off, nothing answers at \$FF68"
+    fi
 
     echo "Becker port: a port that isn't a number"
     mkdir -p "$OUT/badport/roms"
