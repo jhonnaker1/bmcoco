@@ -1,15 +1,16 @@
 //
 // test_modes.cpp
 //
-// Tests of the direct display driver's mode setting calculations (stage 2,
-// src/pi4kms/modes.*): EDID, choosing the mode, the AVI InfoFrame, the
-// PHY's settings and the audio clock.
+// Tests of the shared mode setting calculations (src/kms/common/modes.*):
+// EDID, choosing the mode, the AVI InfoFrame and the audio clock; and the
+// Pi 4 PHY's settings (src/kms/pi4/phy.*).
 //
 // This file is part of BMCoco, a bare metal Tandy Color Computer emulator for
 // the Raspberry Pi. See LICENSE for licensing details.
 //
 
-#include "../../src/pi4kms/modes.h"
+#include "../../src/kms/common/modes.h"
+#include "../../src/kms/pi4/phy.h"
 #include "tests.h"
 
 #include <math.h>

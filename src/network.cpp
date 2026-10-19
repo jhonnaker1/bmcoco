@@ -1,7 +1,11 @@
 //
 // network.cpp
 //
-// Based on BMC64's network start up (viceapp.cpp, vice_network.cpp).
+// Modified for BMA800XL from BMC64's network start up (viceapp.cpp,
+// vice_network.cpp): rewritten to take its settings from cmdline.txt and
+// start the web UI and network time.
+// Changed for BMCoco: the Becker port's connections (host_tcp_*), on
+// Circle's own sockets.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.

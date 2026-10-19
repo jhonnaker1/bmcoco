@@ -1,1 +1,1 @@
-usbpowerdelay=1000 audio_out=auto
+audio_out=auto

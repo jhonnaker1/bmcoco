@@ -228,6 +228,15 @@ else
     fail settings "typed_keys=0 not in bmcoco.cfg"
 fi
 
+echo "GPIO joysticks in the menu"
+# Menu, then down and fire on GPIO joystick 1: the same page as Down and
+# Enter on the keyboard (Disk Drives).
+run gpiomenu 60 "$TESTROMS" "gpio_joysticks=1" '120 key 0x45 1\n121 key 0x45 0\n126 shot menu.ppm\n130 gpio 0 0x02\n132 gpio 0 0\n140 gpio 0 0x10\n142 gpio 0 0\n160 shot gpio.ppm\n161 quit\n'
+run keymenu 60 "$TESTROMS" "gpio_joysticks=1" '120 key 0x45 1\n121 key 0x45 0\n130 key 0x51 1\n131 key 0x51 0\n140 key 0x28 1\n141 key 0x28 0\n160 shot keys.ppm\n161 quit\n'
+cp "$OUT/keymenu/keys.ppm" "$OUT/gpiomenu/keys.ppm" 2>/dev/null
+differ gpiomenu menu gpio
+same gpiomenu gpio keys
+
 echo "Screen size"
 # Menu, down nine to Video, down three to Screen Size, down two from 100%
 # to 90%: saved as scale=0.90 (for a TV that cuts off the edges).

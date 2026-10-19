@@ -1,7 +1,7 @@
 //
 // test.cpp
 //
-// Tests the parts of the Pi 4's direct display driver (src/pi4kms/) that
+// Tests the parts of the Pi 4's direct display driver (src/kms/pi4/) that
 // are pure calculation, on a PC, against the values they must produce. The
 // register writes themselves need a Pi 4.
 //
@@ -11,9 +11,9 @@
 // the Raspberry Pi. See LICENSE for licensing details.
 //
 
-#include "../../src/pi4kms/dlist.h"
-#include "../../src/pi4kms/filter.h"
-#include "../../src/pi4kms/regs.h"
+#include "../../src/kms/pi4/dlist.h"
+#include "../../src/kms/common/filter.h"
+#include "../../src/kms/pi4/regs.h"
 #include "tests.h"
 
 #include <math.h>
@@ -131,15 +131,16 @@ static void TestDlist(void) {
   Check(w[3] == (960u | (720u << 16)), "dlist sharp", "size on screen");
   Check(w[4] == (336u | (240u << 16)), "dlist sharp", "source size");
   Check(w[9] == 32768, "dlist sharp", "line buffer memory address");
-  // Step 336/960 = 0.35 in 16.16: 22937; the error (576/65536 of a pixel)
-  // adds nothing to the -32/64 phase.
+  // Step 336/960 = 0.35 in 16.16: 22937. The phase is -1/2 pixel plus half
+  // a step (the centre of the first screen pixel), -32 + 11 = -21/64 (0x6B
+  // in 7 bits); the error (576/65536 of a pixel) adds nothing.
   uint32_t hppf = w[10];
   Check(Bits(hppf, 31, 31) == 1 && Bits(hppf, 30, 30) == 1 &&
-            Bits(hppf, 24, 8) == 22937 && Bits(hppf, 6, 0) == 0x60,
-        "dlist sharp", "horizontal PPF: no interpolation, AGC, step, phase -1/2");
+            Bits(hppf, 24, 8) == 22937 && Bits(hppf, 6, 0) == 0x6B,
+        "dlist sharp", "horizontal PPF: no interpolation, AGC, step, phase -21/64");
   uint32_t vppf = w[11];
-  Check(Bits(vppf, 24, 8) == 21845 && Bits(vppf, 6, 0) == 0x60 && w[12] == 0xC0C0C0C0,
-        "dlist sharp", "vertical PPF (step 1/3) and its context word");
+  Check(Bits(vppf, 24, 8) == 21845 && Bits(vppf, 6, 0) == 0x6A && w[12] == 0xC0C0C0C0,
+        "dlist sharp", "vertical PPF (step 1/3, phase -22/64) and its context word");
   Check(w[13] == 3083 && w[14] == 3083 && w[15] == 3083 && w[16] == 3083,
         "dlist sharp", "four kernel words");
   Check(w[17] == 0x80000000, "dlist sharp", "end word");

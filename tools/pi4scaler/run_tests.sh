@@ -1,7 +1,7 @@
 #!/bin/bash
 #
-# Tests the Pi 4's software smooth scaling and CRT shader (src/pi4/scaler.*)
-# and how a frame is shared between cores (src/pi4/frameshare.h) on the PC.
+# Tests the shared Pi 4/5 ARM smooth scaling and CRT shader (src/av/scaler.*)
+# and how a frame is shared between cores (src/av/frameshare.h) on the PC.
 # The pictures go to tools/pi4scaler/out/.
 #
 #   tools/pi4scaler/run_tests.sh

@@ -5,6 +5,10 @@
 // shows status, manages the files on the SD card and can reboot the
 // machine. All web UI code lives under src/webui/.
 //
+// Modified for BMA800XL: always built, with the BMA800XL host name,
+// version and power and reset requests; BMC64's profiles are removed.
+// Changed for BMCoco.
+//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at

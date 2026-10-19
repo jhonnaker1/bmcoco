@@ -1,7 +1,7 @@
 //
 // test.cpp
 //
-// Tests the Pi 4's software smooth scaling and CRT shader (src/pi4/scaler.*)
+// Tests the shared Pi 4/5 ARM smooth scaling and CRT shader (src/av/scaler.*)
 // on the PC:
 //  - every output pixel of the fast path is compared with
 //    Pi4Scaler::Reference(), crt-pi done the slow way in floating point;
@@ -19,7 +19,7 @@
 // the Raspberry Pi. See LICENSE for licensing details.
 //
 
-#include "../../src/pi4/scaler.h"
+#include "../../src/av/scaler.h"
 
 #include <chrono>
 #include <math.h>

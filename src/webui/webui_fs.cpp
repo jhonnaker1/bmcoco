@@ -1,6 +1,10 @@
 //
 // webui_fs.cpp
 //
+// Modified for BMA800XL: protects the Atari emulator's configuration
+// files; BMC64's profile and keyboard map files are removed.
+// Changed for BMCoco: CoCo files.
+//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at

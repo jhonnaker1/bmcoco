@@ -54,6 +54,17 @@ REQUIRED_FILES=(
     # Documents and settings examples
     "LICENSE.txt"
     "README.txt"
+    "licenses/README.txt"
+    "licenses/xroar.txt"
+    "licenses/LGPL-3.0.txt"
+    "licenses/Apache-2.0.txt"
+    "licenses/crt-pi.txt"
+    "licenses/GPL-2.0.txt"
+    "licenses/Linux-V3D.txt"
+    "licenses/Mesa-MIT.txt"
+    "licenses/newlib.txt"
+    "licenses/libgloss.txt"
+    "licenses/GCC-Runtime.txt"
     "wpa_supplicant.conf.example"
 
     # Wi-Fi firmware and redistribution licences (build_sdcard.sh only
@@ -120,6 +131,29 @@ do
     elif [ ! -s "$RELEASE_DIRECTORY/$required_file" ]
     then
         echo "Empty: $required_file"
+        problems=1
+    fi
+done
+
+# Every notice in licenses/ must have text, and the copied ones must be those
+# of the circle-stdlib the kernels are built with.
+for notice in "$RELEASE_DIRECTORY"/licenses/*.txt
+do
+    if [ ! -s "$notice" ]
+    then
+        echo "Empty: licenses/$(basename "$notice")"
+        problems=1
+    fi
+done
+for notice in \
+    "newlib.txt:third_party/circle-stdlib/libs/circle-newlib/COPYING.NEWLIB" \
+    "libgloss.txt:third_party/circle-stdlib/libs/circle-newlib/COPYING.LIBGLOSS"
+do
+    if [ -f "$SRC_DIR/${notice#*:}" ] &&
+       [ -f "$RELEASE_DIRECTORY/licenses/${notice%%:*}" ] &&
+       ! cmp -s "$RELEASE_DIRECTORY/licenses/${notice%%:*}" "$SRC_DIR/${notice#*:}"
+    then
+        echo "licenses/${notice%%:*} differs from ${notice#*:}"
         problems=1
     fi
 done

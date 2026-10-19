@@ -5,7 +5,7 @@
 // lines with MULTISAMPLE, GAMMA with FAKE_GAMMA, no mask, not SHARPER,
 // and CURVATURE when built with it.
 //
-// As src/pi4/scaler.h describes for the ARM version: the picture is
+// As src/av/scaler.h describes for the ARM version: the picture is
 // already in colour (no palette texture), the texture is just the visible
 // part (screenScale 1), and with SMOOTH the hardware's bilinear filter is
 // used with the scan lines on the texel centres.

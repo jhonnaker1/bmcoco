@@ -12,6 +12,10 @@ Randy Rossi. It is a fork of BMA800XL with the Atari emulator replaced by
 XRoar; the kernel, display, sound, network and web UI come from those two
 projects.
 
+BMCoco wouldn't be possible without the work behind the open source projects
+it builds on. Thanks to their authors and contributors for making it
+available; see the [third-party](docs/THIRD_PARTY.md) acknowledgements.
+
 - Boots straight into Color BASIC in a couple of seconds
 - Emulates the CoCo 1, 2 and 3 (and, from the same code, the Dragon 32/64
   and the MC-10)
@@ -103,7 +107,8 @@ Enter. **Home**, or **Select+Start** together, opens the menu, where the
 D-pad moves, **A** chooses and **B** goes back.
 
 See the [User Guide](docs/USER_GUIDE.md) for all the details, including the
-options in `cmdline.txt` and the GPIO joystick wiring.
+options in `cmdline.txt` and the GPIO joystick wiring. All the documents are
+listed in [docs/README.md](docs/README.md).
 
 ## Building
 
@@ -132,11 +137,14 @@ src/port/menu.c, osd.c     The menu, drawn in the CoCo 3's font
 src/port/config.h, xroar.mk  XRoar's build options and source list
 third_party/xroar          XRoar (submodule)
 third_party/circle-stdlib  Circle and newlib (submodule)
-src/pi4/                   Pi 4 display, smooth scaling / CRT shader, HDMI sound
-src/pi4kms/                Pi 4 direct display driver (docs/PI4.md)
+src/av/                    Shared Pi 4/5 video, ARM scaling / CRT shader and sound
+src/v3d/                   Shared Pi 4/5 GPU driver and CRT rendering
+src/kms/common/            Shared Pi 4/5 filter kernels and mode calculations
+src/kms/pi4/               Pi 4 direct display driver (docs/PI4.md)
+src/kms/pi5/               Pi 5 direct display driver (docs/PI5.md)
 tools/hostsim              Runs the emulator port on a PC for testing
-tools/pi4scaler            Tests the Pi 4's smooth scaling and CRT shader on a PC
-tools/pi4kms               Tests the Pi 4 display driver's calculations on a PC
+tools/pi4scaler            Tests shared Pi 4/5 ARM scaling and CRT rendering on a PC
+tools/pi4kms               Tests Pi 4/5 display driver calculations on a PC
 ```
 
 XRoar is used unmodified: everything specific to BMCoco is in `src/`.

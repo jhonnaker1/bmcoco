@@ -23,6 +23,20 @@
   emulator opening a file (the cartridge's ROM, at the reset that follows)
   waited for it for ever, and the network with it (no ping). The Becker
   port now uses Circle's own sockets
+- From BMA800XL 1.4.1 and 1.4.2:
+  - The menus can be used with GPIO joysticks: either one moves, fire
+    chooses
+  - `cmdline.txt` leaves `usbpowerdelay` to Circle (300 ms, 510 ms behind a
+    hub) rather than 1000 ms, for a quicker start; add `usbpowerdelay=1000`
+    for a keyboard that needs longer
+  - `./build_sdcard.sh pi4 pi5` builds several boards at once
+  - The SD card's `licenses` folder: the notices and licences of the code
+    from other projects in the kernels (XRoar, Circle and newlib, BMC64's
+    Apache 2.0 code, crt-pi, Mesa and Linux's V3D code, the GCC runtime);
+    docs/THIRD_PARTY.md says where each is used
+  - The Pi 4 and 5's display and GPU code is in `src/av/`, `src/v3d/` and
+    `src/kms/`, as in BMA800XL
+  - Troubleshooting: an 8BitDo M30 2.4G whose receiver is in Switch mode
 - Simulator: BMCOCO_SIM_RATE=48000 plays the sound at the Pi 4 and 5's rate
 
 ## 0.5.2 – 2026-10-16

@@ -1,0 +1,27 @@
+XRoar
+=====
+
+BMCoco's emulation is XRoar 1.12.1 (https://www.6809.org.uk/xroar/), built
+into the kernels with BMCoco's platform layer (src/port/). Its notice, as in
+its source files:
+
+    Copyright 2003-2026 Ciaran Anscomb
+
+    XRoar is free software; you can redistribute it and/or modify it under
+    the terms of the GNU General Public License as published by the Free
+    Software Foundation, either version 3 of the License, or (at your
+    option) any later version.
+
+XRoar's Portalib (portalib/) is under the GNU Lesser General Public License
+version 3 or later:
+
+    Copyright 2014-2026 Ciaran Anscomb
+
+    Portalib is free software; you can redistribute it and/or modify it
+    under the terms of the GNU Lesser General Public License as published
+    by the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+The GNU General Public License version 3 is LICENSE.txt in the root of the
+card; the GNU Lesser General Public License version 3 is in LGPL-3.0.txt.
+BMCoco's menu uses the GIME's character set from XRoar's font.

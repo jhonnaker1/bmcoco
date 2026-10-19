@@ -1,6 +1,10 @@
 //
 // webui_machine.cpp
 //
+// Modified for BMA800XL: the Atari 800XL's name, settings file and the
+// file types atari800 can start, in place of BMC64's machines.
+// Changed for BMCoco: the CoCo machine.
+//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at

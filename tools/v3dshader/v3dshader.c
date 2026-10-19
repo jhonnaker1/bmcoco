@@ -4,7 +4,7 @@
  * Compiles a vertex and fragment shader pair, as SPIR-V from
  * glslangValidator, into QPU code for V3D 4.2 (the Pi 4) or, with -71,
  * V3D 7.1 (the Pi 5) with Mesa's Broadcom compiler, and writes it out as a
- * C++ header for src/pi4v3d/ (see shader.h there):
+ * C++ header for src/v3d/ (see shader.h there):
  * the fragment shader, the vertex shader, the vertex shader's binning
  * (coordinate) version, their uniforms and the VPM set-up. Runs on a PC,
  * against a built Mesa source tree (see README).
@@ -282,7 +282,7 @@ debug_output(const char *msg, void *data)
    fprintf(stderr, "%s\n", msg);
 }
 
-/* The uniform kinds the driver fills in (src/pi4v3d/shader.h). */
+/* The uniform kinds the driver fills in (src/v3d/shader.h). */
 static const char *
 uniform_kind(enum quniform_contents c)
 {

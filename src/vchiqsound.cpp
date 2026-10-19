@@ -1,7 +1,9 @@
 //
 // vchiqsound.cpp
 //
-// Based on BMC64's ViceSound.
+// Modified for BMA800XL from BMC64's ViceSound (vicesound): renamed, it
+// takes the sample rate and buffer size from the emulator and is given
+// whole frames of sound rather than fragments from VICE.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.

@@ -231,7 +231,25 @@ static int map_usage(int usage)
 	}
 }
 
-static int pad_last[HOST_PADS];
+/* The menu also takes the GPIO joysticks, as two more pads: their
+   directions move and fire chooses (A). */
+#define MENU_PADS (HOST_PADS + 2)
+
+static int pad_state(int pad)
+{
+	int gpio, state = 0;
+	if (pad < HOST_PADS)
+		return host_pad_state(pad);
+	gpio = host_gpio_joystick(pad - HOST_PADS);
+	if (gpio & HOST_JOY_UP) state |= HOST_PAD_UP;
+	if (gpio & HOST_JOY_DOWN) state |= HOST_PAD_DOWN;
+	if (gpio & HOST_JOY_LEFT) state |= HOST_PAD_LEFT;
+	if (gpio & HOST_JOY_RIGHT) state |= HOST_PAD_RIGHT;
+	if (gpio & HOST_JOY_FIRE) state |= HOST_PAD_A;
+	return state;
+}
+
+static int pad_last[MENU_PADS];
 static int repeat_usage = -1;
 static int repeat_pad_key = OSD_KEY_NONE;
 static double repeat_next;
@@ -240,8 +258,8 @@ static double repeat_next;
 static int read_pads(double now)
 {
 	int pad;
-	for (pad = 0; pad < HOST_PADS; pad++) {
-		int state = host_pad_state(pad);
+	for (pad = 0; pad < MENU_PADS; pad++) {
+		int state = pad_state(pad);
 		int pressed;
 		if (state < 0)
 			state = 0;
@@ -282,8 +300,8 @@ static int pad_direction_held(int key)
 	case OSD_KEY_RIGHT: bit = HOST_PAD_RIGHT; break;
 	default: return FALSE;
 	}
-	for (pad = 0; pad < HOST_PADS; pad++) {
-		int state = host_pad_state(pad);
+	for (pad = 0; pad < MENU_PADS; pad++) {
+		int state = pad_state(pad);
 		if (state > 0 && (state & bit))
 			return TRUE;
 	}
@@ -294,8 +312,8 @@ static int pad_direction_held(int key)
 static void flush_pads(void)
 {
 	int pad;
-	for (pad = 0; pad < HOST_PADS; pad++) {
-		int state = host_pad_state(pad);
+	for (pad = 0; pad < MENU_PADS; pad++) {
+		int state = pad_state(pad);
 		pad_last[pad] = state < 0 ? 0 : state;
 	}
 }
@@ -307,8 +325,8 @@ static void flush_input(void)
 	int usage, pressed, pad;
 	while (host_key_event(&usage, &pressed))
 		;
-	for (pad = 0; pad < HOST_PADS; pad++) {
-		int state = host_pad_state(pad);
+	for (pad = 0; pad < MENU_PADS; pad++) {
+		int state = pad_state(pad);
 		pad_last[pad] = state < 0 ? 0 : state;
 	}
 	repeat_usage = -1;

@@ -146,6 +146,9 @@ turns on the Pi's pull-ups:
 | Right  | 22                | 13                |
 | Fire   | 23                | 19                |
 
+In the menus either GPIO joystick moves the cursor and fire chooses, as a
+gamepad's D-pad and A do.
+
 Ground is on pins 6, 9, 14, 20, 25, 30, 34 or 39 of the header. These are
 digital (switch) joysticks, like an Atari-style stick with an adapter;
 the CoCo's own analog joysticks need an analog to digital converter, which
@@ -337,7 +340,7 @@ web UI.
 | `webui`             | `0`, `1`                     | `1`      | Web UI when networking is on |
 | `webui_pin`         | digits                       | none     | PIN for the web UI |
 | `timezone`          | minutes east of UTC          | `0`      | Time zone for the network clock |
-| `usbpowerdelay`     | milliseconds                 | `1000`   | Circle: wait for USB devices to power up |
+| `usbpowerdelay`     | milliseconds                 | Circle's | Circle: wait for USB devices to power up (by default 300 ms, 510 ms behind a hub) |
 
 Anything else XRoar can do can go in `xroar.conf` in the root of the card,
 one option per line without the leading `-` (see XRoar's manual), for
@@ -378,7 +381,12 @@ artifact renderer (*Simple* or *5-bit*). Otherwise raise
 
 **Keyboard or gamepad not working**: unplug it and plug it in again; devices
 can come and go while the emulator runs. Some keyboards need a longer
-`usbpowerdelay`.
+`usbpowerdelay` (add `usbpowerdelay=1000` to `cmdline.txt`).
+
+**8BitDo M30 2.4G buttons are wrong**: its receiver can be left in Switch
+mode, where it acts as a Switch Pro controller. With the pad connected,
+hold Home (the heart) and D-pad Down for 5 seconds until the LEDs flash; it
+goes back to its own mode and keeps it.
 
 **The TV cuts off the top and bottom of the picture or the menu**: many TVs
 enlarge the picture and crop its edges (overscan). Make *Video*, *Screen

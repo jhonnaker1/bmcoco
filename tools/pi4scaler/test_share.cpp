@@ -2,7 +2,7 @@
 // test_share.cpp
 //
 // Tests how the Pi 4 shares a frame's drawing between cores
-// (src/pi4/frameshare.h), with threads on the PC in place of cores 1 to 3:
+// (src/av/frameshare.h), with threads on the PC in place of cores 1 to 3:
 // thousands of frames of random sizes, checking that every item is
 // prepared before any row is drawn, that every row is drawn once, and that
 // no helper is still at work when Run() returns (the buffers are replaced
@@ -13,7 +13,7 @@
 // the Raspberry Pi. See LICENSE for licensing details.
 //
 
-#include "../../src/pi4/frameshare.h"
+#include "../../src/av/frameshare.h"
 
 #include <atomic>
 #include <stdio.h>

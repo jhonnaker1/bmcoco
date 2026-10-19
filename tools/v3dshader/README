@@ -1,5 +1,5 @@
 v3dshader: compiles the GPU shaders in this folder into the headers in
-src/pi4v3d/: shader_NAME.h for the Pi 4's V3D 4.2 and shader71_NAME.h for
+src/v3d/: shader_NAME.h for the Pi 4's V3D 4.2 and shader71_NAME.h for
 the Pi 5's V3D 7.1, from rect.vert and NAME.frag. Only needed when a
 shader changes; the headers are in the repository.
 

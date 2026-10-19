@@ -42,24 +42,24 @@ OBJS = src/main.o src/kernel.o src/logging.o src/options.o \
 
 # Display and sound. The Pi 2 and 3 use the VideoCore through VCHIQ
 # (dispmanx, from BMC64); the Pi 4 and 5 use Circle's framebuffer and HDMI
-# sound drivers (src/pi4/, shared by both; see docs/PI4.md and docs/PI5.md).
+# sound drivers (src/av/, shared by both; see docs/PI4.md and docs/PI5.md).
 ifneq ($(filter 4 5,$(RASPPI)),)
-OBJS += src/pi4/video.o src/pi4/sound.o src/pi4/hdmisound.o src/pi4/scaler.o \
-        src/pi4kms/filter.o \
-        src/pi4v3d/gpu.o src/pi4v3d/draw.o src/pi4v3d/crt.o \
-        src/pi4v3d/shaders.o
-# The direct display driver: the Pi 4's (src/pi4kms/) or the Pi 5's
-# (src/pi5kms/, with the Pi 4's filter kernels).
+OBJS += src/av/video.o src/av/sound.o src/av/hdmisound.o src/av/scaler.o \
+        src/kms/common/filter.o src/kms/common/modes.o \
+        src/v3d/gpu.o src/v3d/draw.o src/v3d/crt.o \
+        src/v3d/shaders.o
+# The direct display driver: the Pi 4's (src/kms/pi4/) or the Pi 5's
+# (src/kms/pi5/), with shared filter kernels and mode calculations.
 ifeq ($(RASPPI),4)
-OBJS += src/pi4kms/dlist.o src/pi4kms/hvs.o src/pi4kms/display.o \
-        src/pi4kms/modes.o src/pi4kms/modeset.o
+OBJS += src/kms/pi4/dlist.o src/kms/pi4/hvs.o src/kms/pi4/display.o \
+        src/kms/pi4/phy.o src/kms/pi4/modeset.o
 else
-OBJS += src/pi5kms/dlist.o src/pi5kms/hvs.o src/pi5kms/display.o \
-        src/pi5kms/phy.o src/pi5kms/modeset.o src/pi4kms/modes.o
+OBJS += src/kms/pi5/dlist.o src/kms/pi5/hvs.o src/kms/pi5/display.o \
+        src/kms/pi5/phy.o src/kms/pi5/modeset.o
 endif
 # Smooth scaling and the CRT shader are drawn by the ARM: -O3 lets GCC turn
 # their per-pixel loops into NEON code (tools/pi4scaler tests the same).
-src/pi4/scaler.o: OPTIMIZE = -O3
+src/av/scaler.o: OPTIMIZE = -O3
 else
 OBJS += src/fbl.o src/crt_pi_idx.o src/crt_pi_rgb.o src/vchiqsound.o \
         src/vchiqsoundbasedevice.o
@@ -152,8 +152,9 @@ LIBS := $(XROAR_LIB) \
 	$(CIRCLEHOME)/lib/libcircle.a
 
 EXTRACLEAN += $(OBJS) src/*.o src/port/*.d src/*.d src/webui/*.d src/sdcard/*.d \
-              src/pi4/*.o src/pi4/*.d src/pi4kms/*.o src/pi4kms/*.d \
-              src/pi5kms/*.o src/pi5kms/*.d src/pi4v3d/*.o src/pi4v3d/*.d
+              src/av/*.o src/av/*.d src/kms/common/*.o src/kms/common/*.d \
+              src/kms/pi4/*.o src/kms/pi4/*.d \
+              src/kms/pi5/*.o src/kms/pi5/*.d src/v3d/*.o src/v3d/*.d
 .PHONY: check-submodule distclean
 
 distclean: clean

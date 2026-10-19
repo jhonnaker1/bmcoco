@@ -4,7 +4,7 @@
 # build/sdcard. Copy the contents of that folder to the root of a FAT32
 # formatted SD card.
 #
-#   ./build_sdcard.sh [pi0|pi2|pi3|pi4|pi5] [--skip-patches]
+#   ./build_sdcard.sh [pi0|pi2|pi3|pi4|pi5 ...] [--skip-patches]
 #
 #   pi3     kernel8-32.img: Pi 3 and Pi Zero 2 W
 #   pi2     kernel7.img: Pi 2
@@ -13,12 +13,15 @@
 #   pi5     kernel_2712.img: Pi 5, Pi 500 and Pi 500+
 #   (none)  all of them, as a release has
 #
+# Several boards can be given, e.g. ./build_sdcard.sh pi4 pi5.
+#
 # Without --skip-patches each board is built from clean_all.sh. With it, the
 # third party libraries already built are kept and only the kernel is
 # rebuilt, which is much quicker while developing. The libraries are built
 # for one board at a time, so --skip-patches without a board rebuilds the
 # board they were last built for, and a board they aren't built for is
-# built from clean.
+# built from clean. With several boards, the one they are built for is
+# built first.
 #
 
 set -euo pipefail
@@ -35,9 +38,14 @@ SKIP_PATCHES=0
 for arg in "$@"
 do
     case "$arg" in
-        pi0|pi2|pi3|pi4|pi5) BOARDS=("$arg") ;;
+        pi0|pi2|pi3|pi4|pi5)
+            if [[ " ${BOARDS[*]:-} " != *" $arg "* ]]
+            then
+                BOARDS+=("$arg")
+            fi
+            ;;
         --skip-patches) SKIP_PATCHES=1 ;;
-        *) echo "Usage: $0 [pi0|pi2|pi3|pi4|pi5] [--skip-patches]" >&2; exit 1 ;;
+        *) echo "Usage: $0 [pi0|pi2|pi3|pi4|pi5 ...] [--skip-patches]" >&2; exit 1 ;;
     esac
 done
 
@@ -77,6 +85,25 @@ then
     fi
 fi
 
+# The board the libraries are built for goes first, before another board's
+# clean removes them.
+if [ "$SKIP_PATCHES" -eq 1 ] && [ -n "$(built_board)" ]
+then
+    first=$(built_board)
+    if [[ " ${BOARDS[*]} " == *" $first "* ]]
+    then
+        rest=()
+        for board in "${BOARDS[@]}"
+        do
+            if [ "$board" != "$first" ]
+            then
+                rest+=("$board")
+            fi
+        done
+        BOARDS=("$first" ${rest[@]+"${rest[@]}"})
+    fi
+fi
+
 # The SD card is staged once; each board's build adds its kernel.
 rm -rf "$STAGING_DIR"
 mkdir -p "$STAGING_DIR"
@@ -92,6 +119,9 @@ fi
 cp "$SRC_DIR/sdcard/config.txt" "$SRC_DIR/sdcard/cmdline.txt" \
    "$SRC_DIR/sdcard/wpa_supplicant.conf.example" "$STAGING_DIR/"
 cp "$SRC_DIR/LICENSE" "$STAGING_DIR/LICENSE.txt"
+# The notices and licences of other projects' code in the kernels
+# (docs/THIRD_PARTY.md).
+cp -r "$SRC_DIR/sdcard/licenses" "$STAGING_DIR/"
 cp "$SRC_DIR/docs/SDCARD_README.txt" "$STAGING_DIR/README.txt"
 
 # Folders for the user's files. The file browser starts at the root. Each

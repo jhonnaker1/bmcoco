@@ -1,0 +1,19 @@
+crt-pi
+======
+
+The CRT effect in BMCoco is the crt-pi shader by davej, from the copy
+BMC64 ships (src/crt_pi_idx.c, src/crt_pi_rgb.c). BMCoco uses it on the
+ARM (src/av/scaler.cpp) and, compiled for the Raspberry Pi 4 and Pi 5's
+3D GPU, from tools/v3dshader/crt.frag (src/v3d/shader_crt*.h,
+shader71_crt*.h). Its notice:
+
+    crt-pi - A Raspberry Pi friendly CRT shader.
+
+    Copyright (C) 2015-2016 davej
+
+    This program is free software; you can redistribute it and/or modify it
+    under the terms of the GNU General Public License as published by the Free
+    Software Foundation; either version 2 of the License, or (at your option)
+    any later version.
+
+The GNU General Public License version 2 is in GPL-2.0.txt.
