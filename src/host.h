@@ -122,6 +122,20 @@ void host_network_status(char *text, unsigned size);
    while the emulator waits for the next frame, and whenever it waits
    itself the emulator goes on. Returns 0 if it can't be started. */
 int host_run_in_background(void (*fn)(void *arg), void *arg);
+/* TCP connections (the Becker port's, to a DriveWire server). On the Pi
+   they are Circle's own sockets, not the C library's: its socket calls
+   hold the lock on the table of open files while they wait (connect()
+   for seconds or minutes), so that a file opened meanwhile (a ROM, a
+   disk) would wait for ever, and the Pi with it.
+   host_tcp_connect() looks HOST up and connects to PORT, waiting for it
+   (run it in the background); it returns a connection (0 or more), -1 if
+   it can't connect, or -2 if there is no such host. host_tcp_recv() and
+   host_tcp_send() never wait: they return the bytes received or taken (0
+   if none just now), or -1 if the connection is closed or broken. */
+int host_tcp_connect(const char *host, const char *port);
+int host_tcp_recv(int connection, void *buffer, unsigned size);
+int host_tcp_send(int connection, const void *buffer, unsigned size);
+void host_tcp_close(int connection);
 /* A Wi-Fi network found by host_wifi_scan(). signal is in dBm. */
 struct host_wifi_ap {
 	char ssid[33];

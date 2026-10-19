@@ -11,9 +11,10 @@
  *    is set for one on another computer (a PC running DriveWire 4, or
  *    pyDriveWire): no address, "builtin", or this Pi's own (127.0.0.1,
  *    localhost: nothing else can listen there) mean the built-in one.
- *  - Nothing ever waits: the socket is read and written with MSG_DONTWAIT
- *    (Circle has no fcntl() for sockets), so the emulation goes on while
- *    the server is slow, gone, or not there yet.
+ *  - Nothing ever waits: the connection (host_tcp_*, on the Pi Circle's
+ *    own sockets rather than the C library's, see host.h) is read and
+ *    written without waiting, so the emulation goes on while the server
+ *    is slow, gone, or not there yet.
  *  - It connects once the Pi has a network address, and if the server
  *    can't be reached it tries again 10 seconds later, whenever the CoCo
  *    looks at the port; a server that closes the connection is the same.
@@ -34,17 +35,11 @@
 
 #include "top-config.h"
 
-#include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
-#include <unistd.h>
-
-#include <netdb.h>
-#include <netinet/in.h>
-#include <sys/socket.h>
 
 #include "xalloc.h"
 
@@ -68,7 +63,7 @@ struct connection {
 	char host[64];
 	char port[16];
 	int state;
-	int fd;          /* when DONE: the socket, or -1 */
+	int fd;          /* when DONE: the connection, or -1 */
 	int no_host;     /* when DONE: the name couldn't be found */
 };
 
@@ -123,7 +118,7 @@ static void disconnect(struct becker *b)
 {
 	abandon(b);
 	if (b->sockfd >= 0)
-		close(b->sockfd);
+		host_tcp_close(b->sockfd);
 	b->sockfd = -1;
 	b->input_buf_ptr = b->input_buf_length = 0;
 	b->output_buf_length = 0;
@@ -134,29 +129,17 @@ static void disconnect(struct becker *b)
 static void connect_job(void *arg)
 {
 	struct connection *c = arg;
-	struct addrinfo hints, *info = NULL;
-	int fd = -1, no_host = 0, expected = CONNECTING;
+	int fd = host_tcp_connect(c->host, c->port), expected = CONNECTING;
 
-	memset(&hints, 0, sizeof(hints));
-	hints.ai_family = AF_INET;
-	hints.ai_socktype = SOCK_STREAM;
-	if (getaddrinfo(c->host, c->port, &hints, &info) != 0 || info == NULL) {
-		no_host = 1;
-	} else {
-		fd = socket(info->ai_family, info->ai_socktype, info->ai_protocol);
-		if (fd >= 0 && connect(fd, info->ai_addr, info->ai_addrlen) < 0) {
-			close(fd);
-			fd = -1;
-		}
-		freeaddrinfo(info);
-	}
+	c->no_host = fd == -2;
+	if (fd < 0)
+		fd = -1;
 	c->fd = fd;
-	c->no_host = no_host;
 	if (!__atomic_compare_exchange_n(&c->state, &expected, DONE, 0,
 	                                 __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) {
 		/* The Becker port has gone (the cartridge was taken out). */
 		if (fd >= 0)
-			close(fd);
+			host_tcp_close(fd);
 		free(c);
 	}
 }
@@ -173,7 +156,7 @@ static void abandon(struct becker *b)
 	                                 __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) {
 		/* It had finished. */
 		if (c->fd >= 0)
-			close(c->fd);
+			host_tcp_close(c->fd);
 		free(c);
 	}
 }
@@ -237,14 +220,14 @@ static void write_output(struct becker *b);
 
 static void fetch_input(struct becker *b)
 {
-	ssize_t got;
+	int got;
 	if (b->sockfd < 0 || b->input_buf_ptr < b->input_buf_length)
 		return;
-	got = recv(b->sockfd, b->input_buf, INPUT_BUFFER_SIZE, MSG_DONTWAIT);
+	got = host_tcp_recv(b->sockfd, b->input_buf, INPUT_BUFFER_SIZE);
 	if (got > 0) {
 		b->input_buf_ptr = 0;
-		b->input_buf_length = (int) got;
-	} else if (got == 0 || (errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR)) {
+		b->input_buf_length = got;
+	} else if (got < 0) {
 		LOG_WARN("Becker port: the DriveWire server closed the connection\n");
 		disconnect(b);
 	}
@@ -252,14 +235,14 @@ static void fetch_input(struct becker *b)
 
 static void write_output(struct becker *b)
 {
-	ssize_t sent;
+	int sent;
 	if (b->sockfd < 0 || b->output_buf_length == 0)
 		return;
-	sent = send(b->sockfd, b->output_buf, (size_t) b->output_buf_length, MSG_DONTWAIT);
+	sent = host_tcp_send(b->sockfd, b->output_buf, (unsigned) b->output_buf_length);
 	if (sent > 0) {
 		memmove(b->output_buf, b->output_buf + sent, (size_t) (b->output_buf_length - sent));
-		b->output_buf_length -= (int) sent;
-	} else if (sent < 0 && errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR) {
+		b->output_buf_length -= sent;
+	} else if (sent < 0) {
 		LOG_WARN("Becker port: can't send to the DriveWire server\n");
 		disconnect(b);
 	}

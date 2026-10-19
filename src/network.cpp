@@ -24,7 +24,10 @@
 #include <circle/logger.h>
 #include <circle_glue.h>
 #include <circle/machineinfo.h>
+#include <circle/net/dnsclient.h>
+#include <circle/net/in.h>
 #include <circle/net/netsubsystem.h>
+#include <circle/net/socket.h>
 #include <circle/netdevice.h>
 #include <circle/sched/task.h>
 #include <circle/string.h>
@@ -33,6 +36,7 @@
 #include <wlan/hostap/wpa_supplicant/wpasupplicant.h>
 
 #include <stddef.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -381,6 +385,113 @@ private:
 
 extern "C" int host_run_in_background(void (*fn)(void *arg), void *arg) {
   return new CBackgroundTask(fn, arg) != 0;
+}
+
+//
+// TCP connections for the emulator (host_tcp_*, see host.h): Circle's
+// sockets. A received segment is kept here until it has all been read
+// (CSocket::Receive() drops what doesn't fit the buffer it is given). All
+// on core 1, in the emulator or a background task, which take turns.
+//
+
+namespace {
+
+struct TcpConnection {
+  CSocket *socket;  // 0 when the slot is free
+  u8 buffer[FRAME_BUFFER_SIZE];
+  unsigned pos, length;
+};
+
+const int kMaxTcpConnections = 4;
+TcpConnection s_tcp[kMaxTcpConnections];
+
+TcpConnection *TcpSlot(int connection) {
+  if (connection < 0 || connection >= kMaxTcpConnections ||
+      s_tcp[connection].socket == 0) {
+    return 0;
+  }
+  return &s_tcp[connection];
+}
+
+}  // namespace
+
+extern "C" int host_tcp_connect(const char *host, const char *port) {
+  if (s_net == 0 || !s_net->IsRunning()) {
+    return -1;
+  }
+  CIPAddress address;
+  CDNSClient dns(s_net);
+  if (!dns.Resolve(host, &address)) {
+    return -2;
+  }
+  int number = atoi(port);
+  if (number <= 0 || number > 65535) {
+    return -2;
+  }
+  int connection = -1;
+  for (int i = 0; i < kMaxTcpConnections; i++) {
+    if (s_tcp[i].socket == 0) {
+      connection = i;
+      break;
+    }
+  }
+  if (connection < 0) {
+    return -1;
+  }
+  // The slot is taken before Connect() waits, so that another connection
+  // made meanwhile gets another.
+  CSocket *socket = new CSocket(s_net, IPPROTO_TCP);
+  s_tcp[connection].socket = socket;
+  s_tcp[connection].pos = s_tcp[connection].length = 0;
+  if (socket->Connect(address, (u16)number) < 0) {
+    s_tcp[connection].socket = 0;
+    delete socket;
+    return -1;
+  }
+  return connection;
+}
+
+extern "C" int host_tcp_recv(int connection, void *buffer, unsigned size) {
+  TcpConnection *c = TcpSlot(connection);
+  if (c == 0) {
+    return -1;
+  }
+  if (c->pos >= c->length) {
+    int got = c->socket->Receive(c->buffer, sizeof c->buffer, MSG_DONTWAIT);
+    if (got < 0) {
+      return -1;
+    }
+    c->pos = 0;
+    c->length = (unsigned)got;
+  }
+  unsigned n = c->length - c->pos;
+  if (n > size) {
+    n = size;
+  }
+  memcpy(buffer, c->buffer + c->pos, n);
+  c->pos += n;
+  return (int)n;
+}
+
+extern "C" int host_tcp_send(int connection, const void *buffer, unsigned size) {
+  TcpConnection *c = TcpSlot(connection);
+  if (c == 0) {
+    return -1;
+  }
+  if (size == 0) {
+    return 0;
+  }
+  int sent = c->socket->Send(buffer, size, MSG_DONTWAIT);
+  return sent < 0 ? -1 : sent;
+}
+
+extern "C" void host_tcp_close(int connection) {
+  TcpConnection *c = TcpSlot(connection);
+  if (c != 0) {
+    CSocket *socket = c->socket;
+    c->socket = 0;
+    delete socket;
+  }
 }
 
 //

@@ -392,6 +392,14 @@ PYEOF
     fi
 
     echo "Becker port (real ROMs, a stand-in DriveWire server)"
+    # On the Pi the C library's socket calls hold its open files' lock while
+    # they wait: a connect() in the background then hung the Pi as soon as
+    # the emulator opened a file. The port must use host_tcp_* instead.
+    if grep -nE '(^|[^_a-z])(connect|recv|send|socket|getaddrinfo) *\(' "$HERE/../../src/port/"*.c > /dev/null; then
+        fail sockets "src/port calls the C library's sockets (use host_tcp_*)"
+    else
+        pass "sockets: the port uses host_tcp_*, not the C library's sockets"
+    fi
     # The IDE interface (a stand-in HDB-DOS: only its Becker port is used)
     # in xroar.conf. A BASIC program writes A to the port's data register,
     # waits for the server's answer (Z) and writes it back.

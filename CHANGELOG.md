@@ -16,6 +16,13 @@
   found, a CRC error or a seek error, so that a program stuck loading (the
   wrong disk in the drive, a bad image) can be seen to be. Disk Drives,
   Show Disk Activity (`disk_activity=0`) turns it off
+- Fix the Pi hanging when the Becker port is used with a DriveWire server
+  on another computer (the built-in server was fine). Circle's C library
+  holds the lock on its table of open files for as long as a socket call
+  waits, so while the Becker port was connecting in the background, the
+  emulator opening a file (the cartridge's ROM, at the reset that follows)
+  waited for it for ever, and the network with it (no ping). The Becker
+  port now uses Circle's own sockets
 - Simulator: BMCOCO_SIM_RATE=48000 plays the sound at the Pi 4 and 5's rate
 
 ## 0.5.2 – 2026-10-16
