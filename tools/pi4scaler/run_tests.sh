@@ -15,4 +15,11 @@ rm -rf "$HERE/out"
 mkdir -p "$HERE/out"
 "$HERE/build/pi4scaler_test" "$HERE/out"
 echo
-"$HERE/build/share_test"
+# ThreadSanitizer stops on some newer Linux kernels' address layout; run it
+# without address space randomisation where setarch is available.
+if command -v setarch > /dev/null
+then
+    setarch "$(uname -m)" -R "$HERE/build/share_test"
+else
+    "$HERE/build/share_test"
+fi

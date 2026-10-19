@@ -4,7 +4,7 @@
 # build/sdcard. Copy the contents of that folder to the root of a FAT32
 # formatted SD card.
 #
-#   ./build_sdcard.sh [pi0|pi2|pi3|pi4|pi5 ...] [--skip-patches]
+#   ./build_sdcard.sh [pi0|pi2|pi3|pi4|pi5 ...] [--skip-patches] [--skip-tests]
 #
 #   pi3     kernel8-32.img: Pi 3 and Pi Zero 2 W
 #   pi2     kernel7.img: Pi 2
@@ -14,6 +14,9 @@
 #   (none)  all of them, as a release has
 #
 # Several boards can be given, e.g. ./build_sdcard.sh pi4 pi5.
+#
+# The PC tests (tools/hostsim, tools/pi4kms, tools/pi4scaler) run first, and
+# the build stops if any of them fails. --skip-tests leaves them out.
 #
 # Without --skip-patches each board is built from clean_all.sh. With it, the
 # third party libraries already built are kept and only the kernel is
@@ -34,6 +37,7 @@ CIRCLE_CONFIG="$SRC_DIR/third_party/circle-stdlib/libs/circle/Config.mk"
 ALL_BOARDS=(pi0 pi2 pi3 pi4 pi5)
 BOARDS=()
 SKIP_PATCHES=0
+SKIP_TESTS=0
 
 for arg in "$@"
 do
@@ -45,7 +49,8 @@ do
             fi
             ;;
         --skip-patches) SKIP_PATCHES=1 ;;
-        *) echo "Usage: $0 [pi0|pi2|pi3|pi4|pi5 ...] [--skip-patches]" >&2; exit 1 ;;
+        --skip-tests) SKIP_TESTS=1 ;;
+        *) echo "Usage: $0 [pi0|pi2|pi3|pi4|pi5 ...] [--skip-patches] [--skip-tests]" >&2; exit 1 ;;
     esac
 done
 
@@ -102,6 +107,25 @@ then
         done
         BOARDS=("$first" ${rest[@]+"${rest[@]}"})
     fi
+fi
+
+# The PC tests (tools/hostsim without real ROMs: set BMCOCO_ROMS to test
+# with them too).
+if [ "$SKIP_TESTS" -eq 0 ]
+then
+    echo "=============================================================="
+    echo "RUNNING TESTS"
+    echo "=============================================================="
+    run_tests() {
+        if ! "$@"
+        then
+            echo "BUILD FAILED: $1 failed." >&2
+            exit 1
+        fi
+    }
+    run_tests "$SRC_DIR/tools/hostsim/run_tests.sh"
+    run_tests "$SRC_DIR/tools/pi4kms/run_tests.sh"
+    run_tests "$SRC_DIR/tools/pi4scaler/run_tests.sh"
 fi
 
 # The SD card is staged once; each board's build adds its kernel.

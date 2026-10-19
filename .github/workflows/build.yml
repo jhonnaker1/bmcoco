@@ -28,14 +28,6 @@ jobs:
           path: ~/.cache/bmcoco/toolchains
           key: arm-gnu-toolchain-15.2.rel1-arm-none-eabi-aarch64-none-elf
 
-      - name: Test the emulator port on the PC
-        run: tools/hostsim/run_tests.sh
-
-      - name: Test the Pi 4 scaler and display driver on the PC
-        run: |
-          tools/pi4scaler/run_tests.sh
-          tools/pi4kms/run_tests.sh
-
       - name: Build
         run: ./build_sdcard.sh
 

@@ -59,8 +59,8 @@ static void TestScaled(void) {
   Check(w[7] == 0x12345678, name, "pointer 1: address");
   Check(w[8] == 1536, name, "pointer 2: pitch");
   Check(w[9] == 36, name, "line buffer start");
-  // Step 384/1440 in 16.16 (17476); the phase is -1/2 pixel plus half a step,
-  // -24/64 (0x68 in 7 bits).
+  // Step 0x4444 (384/1440 and 288/1080); phase -32/64 plus half the step
+  // (8/64) = -24/64.
   Check(w[10] == 0x40444468 && w[11] == 0x40444468, name, "PPF words, smooth");
   Check(w[12] == 0xC0C0C0C0, name, "vertical PPF context");
   Check(w[13] == 3072 && w[16] == 3072, name, "kernel words");
