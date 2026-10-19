@@ -115,6 +115,9 @@ builds everything (the kernels for both boards; `./build_sdcard.sh pi3` or
 `pi2` builds one) and stages the SD card files in `build/sdcard/`. It works
 on Linux and macOS. See [docs/BUILDING.md](docs/BUILDING.md).
 
+BMCoco can also run on a PC, in a simulator, for testing and debugging (with
+gdb, lldb or strace): see [docs/SIMULATOR.md](docs/SIMULATOR.md).
+
 ## How it fits together
 
 ```

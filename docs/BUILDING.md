@@ -126,6 +126,8 @@ display). The web page is served on 127.0.0.1 only.
 
 The simulator can also be driven by a script of key presses and
 screenshots; see the top of `tools/hostsim/host_sim.c` for the commands.
+[SIMULATOR.md](SIMULATOR.md) has more: setting it up, debugging it with
+gdb, lldb or strace, XRoar's traces, and getting a log from the Pi.
 
 `tools/pi4scaler` tests the Pi 4's smooth scaling and CRT shader
 (`src/pi4/scaler.*`): every pixel is checked against crt-pi worked out in
