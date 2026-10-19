@@ -418,6 +418,7 @@ PYEOF
         local name=$1 frames=$2 server
         mkdir -p "$OUT/$name/roms"
         for f in "$BMCOCO_ROMS"/*; do ln -s "$f" "$OUT/$name/roms/" 2>/dev/null; done
+        rm -f "$OUT/$name/roms/hdblba.rom"   # a link to the ROM folder's, if it has one
         head -c 8192 /dev/zero > "$OUT/$name/roms/hdblba.rom"
         printf 'machine coco2bus\nmachine-cart ide\n' > "$OUT/$name/xroar.conf"
         python3 - "$OUT/$name/server.log" <<'EOF' &
@@ -481,6 +482,7 @@ EOF
     # then be all 8s.
     mkdir -p "$OUT/dw/roms" "$OUT/dw/disks"
     for f in "$BMCOCO_ROMS"/*; do ln -s "$f" "$OUT/dw/roms/" 2>/dev/null; done
+    rm -f "$OUT/dw/roms/hdblba.rom"
     head -c 8192 /dev/zero > "$OUT/dw/roms/hdblba.rom"
     printf 'machine coco2bus\nmachine-cart ide\n' > "$OUT/dw/xroar.conf"
     python3 -c "import sys; sys.stdout.buffer.write(bytes(256) + bytes([7]) * 256 + bytes(256 * 33))" > "$OUT/dw/disks/test.dsk"
@@ -511,6 +513,7 @@ EOF
     echo "Becker port: a port that isn't a number"
     mkdir -p "$OUT/badport/roms"
     for f in "$BMCOCO_ROMS"/*; do ln -s "$f" "$OUT/badport/roms/" 2>/dev/null; done
+    rm -f "$OUT/badport/roms/hdblba.rom"
     head -c 8192 /dev/zero > "$OUT/badport/roms/hdblba.rom"
     printf 'machine coco2bus\nmachine-cart ide\n' > "$OUT/badport/xroar.conf"
     (cd "$OUT/badport" && printf '%s\n' '300 type PRINT PEEK(&HFF41)\n' '400 quit' | \
