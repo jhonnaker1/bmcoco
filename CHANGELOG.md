@@ -7,6 +7,9 @@
 - Pi 4 and 5: fix the sound breaking up. Their HDMI plays at 48 kHz, but
   XRoar made its sound at 44.1 kHz, so the buffer ran dry all the time and
   the sound was stretched in jumps. XRoar now makes it at the output's rate
+- Video, Screen Size (100% down to 80%): makes the picture and the menu
+  smaller, for a TV that cuts off the edges (overscan). The same as the
+  `scale` option, now changed without editing `cmdline.txt`
 - Simulator: BMCOCO_SIM_RATE=48000 plays the sound at the Pi 4 and 5's rate
 
 ## 0.5.2 – 2026-10-16

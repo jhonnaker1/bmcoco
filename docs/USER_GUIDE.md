@@ -65,7 +65,7 @@ next item starting with it.
 | Machine        | CoCo 1, 2 or 3, PAL or NTSC, with or without a 6309, and the other machines XRoar emulates. Machines without ROMs are marked |
 | Memory         | The machine's RAM: 128K, 512K, 1M or 2M for a CoCo 3, 4K to 64K for a CoCo 1 or 2 (or a Dragon). The machine is reset with it, and it is kept for that machine |
 | Joysticks      | What is plugged into each joystick port, which gamepad is which joystick, GPIO joysticks, and a joystick test |
-| Video          | TV input (composite with artifact colours, S-Video, or RGB for the CoCo 3), the artifact colour renderer, how much border to show, the frame lock, the resolution (Pi 5), the CRT effect and its curvature, smooth scaling |
+| Video          | TV input (composite with artifact colours, S-Video, or RGB for the CoCo 3), the artifact colour renderer, how much border to show, the screen size (smaller for a TV that cuts off the edges), the frame lock, the resolution (Pi 5), the CRT effect and its curvature, smooth scaling |
 | Keyboard       | Typed characters on or off, and the PC keyboard's layout |
 | Sound          | Volume, and HDMI or the headphone jack |
 | Network        | Ethernet or Wi-Fi, and the web UI (see below) |
@@ -310,7 +310,7 @@ web UI.
 | `artifacts`         | `none`, `simple`, `5bit`, `partial`, `simulated` | XRoar's | Artifact colour renderer |
 | `picture`           | `zoomed`, `title`, `action`, `underscan` | `title` | How much border to show |
 | `aspect`            | number                       | `1.0`    | Multiplies the width of the picture |
-| `scale`             | 0.1 to 1.0                   | `1.0`    | Height of the picture as a fraction of the screen |
+| `scale`             | 0.1 to 1.0                   | `1.0`    | Height of the picture as a fraction of the screen (Video, Screen Size; less for a TV that cuts off the edges) |
 | `smooth`            | `0`, `1`                     | `0`      | Bilinear filtering instead of sharp pixels |
 | `crt_shader`        | `0`, `1`                     | `0`      | CRT look (scanlines) from BMC64 |
 | `crt_curvature`     | `0`, `1`                     | `0`      | With `crt_shader`, a curved screen |
@@ -378,6 +378,11 @@ artifact renderer (*Simple* or *5-bit*). Otherwise raise
 **Keyboard or gamepad not working**: unplug it and plug it in again; devices
 can come and go while the emulator runs. Some keyboards need a longer
 `usbpowerdelay`.
+
+**The TV cuts off the top and bottom of the picture or the menu**: many TVs
+enlarge the picture and crop its edges (overscan). Make *Video*, *Screen
+Size* smaller (90% usually does), or turn overscan off on the TV ("Just
+Scan", "Screen Fit" or "1:1").
 
 **A game's colours are wrong**: choose the other composite phase in *Video*,
 *TV Input*.

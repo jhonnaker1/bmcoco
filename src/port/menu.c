@@ -871,9 +871,38 @@ static const char *vsync_mode(void)
 	return bmcoco_vsync_locked() ? "Auto (locked)" : "Auto (timer)";
 }
 
+/* The picture's height as a percentage of the screen's (the scale option):
+   less for a TV that cuts off the edges (overscan). */
+static int screen_size(void)
+{
+	double scale = host_option_double("scale", 1.0);
+	if (scale <= 0.1 || scale > 1.0)
+		scale = 1.0;
+	return (int) (scale * 100.0 + 0.5);
+}
+
+static void choose_screen_size(void)
+{
+	static const char *const choices[] = {
+		"100%: fill the screen", "95%", "90%", "85%", "80%", NULL
+	};
+	static const int sizes[] = {100, 95, 90, 85, 80};
+	int size = screen_size(), current = 0, k, i;
+	char text[8];
+	for (k = 1; k < 5; k++)
+		if (abs(sizes[k] - size) < abs(sizes[current] - size))
+			current = k;
+	i = osd_choose("Screen Size", choices, current);
+	if (i < 0)
+		return;
+	snprintf(text, sizeof text, "%d.%02d", sizes[i] / 100, sizes[i] % 100);
+	save_setting("scale", text);
+	bmcoco_video_settings_changed();
+}
+
 static void video_menu(void)
 {
-	enum { V_TV, V_CCR, V_PICTURE, V_VSYNC, V_RESOLUTION, V_SHADER, V_CURVATURE, V_SMOOTH };
+	enum { V_TV, V_CCR, V_PICTURE, V_SIZE, V_VSYNC, V_RESOLUTION, V_SHADER, V_CURVATURE, V_SMOOTH };
 	/* The Pi 5 only: its firmware ignores hdmi_mode (from BMA800XL). */
 	static const char *const resolutions[] = {"auto", "1920x1080", "1280x720", NULL};
 	static const char *const resolution_names[] = {"Auto", "1920x1080", "1280x720", NULL};
@@ -881,6 +910,8 @@ static void video_menu(void)
 	for (;;) {
 		const char *res = host_option("resolution", "auto");
 		int res_index = 0, n_items, k;
+		char size_text[8];
+		snprintf(size_text, sizeof size_text, "%d%%", screen_size());
 		for (k = 0; resolutions[k] != NULL; k++)
 			if (strcmp(res, resolutions[k]) == 0)
 				res_index = k;
@@ -891,6 +922,7 @@ static void video_menu(void)
 			 OSD_ITEM_SUBMENU, V_CCR},
 			{"Picture Area", enum_description(vo_viewport_list, state.picture),
 			 OSD_ITEM_SUBMENU, V_PICTURE},
+			{"Screen Size", size_text, OSD_ITEM_SUBMENU, V_SIZE},
 			{"Frame Lock", vsync_mode(), OSD_ITEM_SUBMENU, V_VSYNC},
 			{"Resolution", resolution_names[res_index], OSD_ITEM_SUBMENU, V_RESOLUTION},
 			{"CRT Effect (reboot)", NULL, check(setting_on("crt_shader", FALSE)), V_SHADER},
@@ -900,17 +932,23 @@ static void video_menu(void)
 			{"Composite shows the artifact colours", NULL, OSD_ITEM_LABEL, -1},
 			{"CoCo games use; if red and blue are", NULL, OSD_ITEM_LABEL, -1},
 			{"swapped, choose the other phase.", NULL, OSD_ITEM_LABEL, -1},
+			{"", NULL, OSD_ITEM_LABEL, -1},
+			{"If your TV cuts off the edges, make", NULL, OSD_ITEM_LABEL, -1},
+			{"the Screen Size smaller.", NULL, OSD_ITEM_LABEL, -1},
 		};
 		int chosen, i;
 		n_items = sizeof(items) / sizeof(items[0]);
 		if (!host_display_resolution_choice()) {
 			/* Resolution is only for the Pi 5 (with video_driver=kms). */
-			for (k = 4; k < n_items - 1; k++)
+			for (k = 5; k < n_items - 1; k++)
 				items[k] = items[k + 1];
 			n_items--;
 		}
 		chosen = osd_menu("Video", items, n_items, &sel);
 		switch (chosen) {
+		case V_SIZE:
+			choose_screen_size();
+			break;
 		case V_RESOLUTION:
 			i = osd_choose("Resolution", resolution_names, res_index);
 			if (i >= 0 && i != res_index) {

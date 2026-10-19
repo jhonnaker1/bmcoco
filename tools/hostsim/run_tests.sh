@@ -228,6 +228,16 @@ else
     fail settings "typed_keys=0 not in bmcoco.cfg"
 fi
 
+echo "Screen size"
+# Menu, down nine to Video, down three to Screen Size, down two from 100%
+# to 90%: saved as scale=0.90 (for a TV that cuts off the edges).
+run size 60 "$TESTROMS" "" '120 key 0x45 1\n121 key 0x45 0\n128 key 0x51 1\n129 key 0x51 0\n130 key 0x51 1\n131 key 0x51 0\n132 key 0x51 1\n133 key 0x51 0\n134 key 0x51 1\n135 key 0x51 0\n136 key 0x51 1\n137 key 0x51 0\n138 key 0x51 1\n139 key 0x51 0\n140 key 0x51 1\n141 key 0x51 0\n142 key 0x51 1\n143 key 0x51 0\n144 key 0x51 1\n145 key 0x51 0\n150 key 0x28 1\n151 key 0x28 0\n160 key 0x51 1\n161 key 0x51 0\n162 key 0x51 1\n163 key 0x51 0\n164 key 0x51 1\n165 key 0x51 0\n170 key 0x28 1\n171 key 0x28 0\n175 shot sizes.ppm\n180 key 0x51 1\n181 key 0x51 0\n182 key 0x51 1\n183 key 0x51 0\n190 key 0x28 1\n191 key 0x28 0\n200 shot video.ppm\n300 quit\n'
+if grep -q "^scale=0.90" "$OUT/size/bmcoco.cfg" 2>/dev/null; then
+    pass "size: Video > Screen Size 90% saved as scale=0.90"
+else
+    fail size "scale=0.90 not in bmcoco.cfg (see out/size/log.txt)"
+fi
+
 echo "Memory"
 # Menu, down seven to Memory, up two from 64K to 16K: the machine is reset
 # with 16K, the choice saved, and used again at the next boot.
