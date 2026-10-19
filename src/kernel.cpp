@@ -125,6 +125,9 @@ CKernel::CKernel(void)
       mSerial(0, FALSE, 0),
 #endif
       mLog(&mSerial), mTimer(&mInterrupt), mLogger(mKernelOptions.GetLogLevel(), &mTimer),
+#if RASPPI <= 4
+      mCPUThrottle(CPUSpeedMaximum),
+#endif
       mGPIOManager(&mInterrupt),
 #if RASPPI <= 3
       mVCHIQ(CMemorySystem::Get(), &mInterrupt),
@@ -184,6 +187,12 @@ bool CKernel::Initialize(void) {
   if (!mTimer.Initialize()) {
     return false;
   }
+#if RASPPI <= 4
+  mLogger.Write(FromKernel, LogNotice, "CPU clock %u MHz (%u to %u MHz)",
+                mCPUThrottle.GetClockRate() / 1000000,
+                mCPUThrottle.GetMinClockRate() / 1000000,
+                mCPUThrottle.GetMaxClockRate() / 1000000);
+#endif
   if (!mGPIOManager.Initialize()) {
     return false;
   }

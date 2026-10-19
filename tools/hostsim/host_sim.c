@@ -214,7 +214,10 @@ void host_yield(void)
 
 /* ---- Sound ---------------------------------------------------------------- */
 
-#define HW_RATE 44100
+/* The output's rate: the VideoCore's 44100 Hz, or BMCOCO_SIM_RATE (48000
+   for the Pi 4 and 5's HDMI, which take the latency at 44100 Hz). */
+static unsigned hw_rate = 44100;
+#define HW_RATE hw_rate
 static int snd_open = 0;
 static int snd_channels = 1;
 static unsigned snd_capacity = 0;
@@ -246,12 +249,15 @@ static void sound_advance(void)
 
 unsigned host_sound_open(unsigned freq, int channels, unsigned latency_frames)
 {
+	const char *rate = getenv("BMCOCO_SIM_RATE");
 	(void) freq;
+	if (rate != NULL && atoi(rate) >= 8000)
+		hw_rate = (unsigned) atoi(rate);
 	snd_open = 1;
 	snd_channels = channels;
-	snd_capacity = latency_frames;
+	snd_capacity = (unsigned) ((unsigned long) latency_frames * hw_rate / 44100);
 	snd_last = now;
-	fprintf(stderr, "[sim] sound open: %d channel(s), %u frames\n", channels, latency_frames);
+	fprintf(stderr, "[sim] sound open: %d channel(s), %u frames\n", channels, snd_capacity);
 	return HW_RATE;
 }
 

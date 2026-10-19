@@ -1,3 +1,14 @@
+## Unreleased
+
+- Pi Zero, 2, 3 and 4: run the ARM at its full clock. Without an operating
+  system asking for more the firmware left it at its lowest (600 MHz on a
+  Pi 3 B+, not 1.4 GHz), too slow for busy CoCo 3 games such as Rick
+  Dangerous, whose sound then broke up. The log shows the clock
+- Pi 4 and 5: fix the sound breaking up. Their HDMI plays at 48 kHz, but
+  XRoar made its sound at 44.1 kHz, so the buffer ran dry all the time and
+  the sound was stretched in jumps. XRoar now makes it at the output's rate
+- Simulator: BMCOCO_SIM_RATE=48000 plays the sound at the Pi 4 and 5's rate
+
 ## 0.5.2 – 2026-10-16
 
 - Fix the sound clicking or sounding wrong (PLAY on a CoCo 3, for one): a

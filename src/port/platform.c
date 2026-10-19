@@ -419,8 +419,11 @@ static void open_sound(void)
 		ms = 20;
 	if (ms > 500)
 		ms = 500;
-	ao_latency = AO_RATE * ms / 1000;
-	ao_rate = host_sound_open(AO_RATE, 1, ao_latency);
+	ao_rate = host_sound_open(AO_RATE, 1, AO_RATE * ms / 1000);
+	/* The output may run at another rate (48 kHz HDMI on the Pi 4 and
+	   5): XRoar then makes its sound at that rate, and the buffer is
+	   counted in its frames. */
+	ao_latency = (ao_rate ? ao_rate : AO_RATE) * ms / 1000;
 	if (ao_rate == 0)
 		LOG_WARN("BMCoco: no sound\n");
 }
@@ -554,7 +557,7 @@ static void *ao_new(void *cfg)
 	(void) cfg;
 	*ao = (struct ao_interface){0};
 	ao->free = DELEGATE_AS0(void, ao_free, ao);
-	ao->sound_interface = sound_interface_new(NULL, SOUND_FMT_S16_HE, AO_RATE, 1, AO_FRAGMENT);
+	ao->sound_interface = sound_interface_new(NULL, SOUND_FMT_S16_HE, ao_rate ? ao_rate : AO_RATE, 1, AO_FRAGMENT);
 	if (ao->sound_interface == NULL) {
 		free(ao);
 		return NULL;

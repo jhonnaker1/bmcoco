@@ -322,6 +322,20 @@ if [ -n "${BMCOCO_ROMS:-}" ]; then
     fi
     check_audio coco3play
 
+    echo "CoCo 3 sound at 48 kHz (the Pi 4 and 5's HDMI)"
+    # The sound must be made at the output's rate: made at 44100 Hz and
+    # played at 48000 it ran dry all the time, stretched by 9% (+3900 a
+    # second) in jumps. Locked 0.5% fast it should need about -240 (after
+    # the first second, which fills the buffer).
+    BMCOCO_SIM_RATE=48000 run coco3play48 60 "$BMCOCO_ROMS" "machine=coco3" '300 type PLAY"FEFEFE"\\n\n900 audio\n901 quit\n'
+    worst=$(grep "sound rate corrections" "$OUT/coco3play48/log.txt" | tail -n +2 | sed 's/.*corrections [+-]*\([0-9]*\).*/\1/' | sort -n | tail -1)
+    if [ "${worst:-0}" -le 1000 ]; then
+        pass "coco3play48: the sound made at 48 kHz (corrections at most ${worst:-0} a second)"
+    else
+        fail coco3play48 "sound rate corrections of $worst a second: not made at the output's rate"
+    fi
+    check_audio coco3play48
+
     echo "Becker port (real ROMs, a stand-in DriveWire server)"
     # The IDE interface (a stand-in HDB-DOS: only its Becker port is used)
     # in xroar.conf. A BASIC program writes A to the port's data register,
