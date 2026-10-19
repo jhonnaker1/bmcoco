@@ -17,8 +17,9 @@
    yourself (see [BUILDING.md](BUILDING.md)) and use `build/sdcard/`.
 2. Format the SD card as FAT32.
 3. Extract the zip to the root of the card, so that the kernels
-   (`kernel8-32.img`, `kernel7.img`) and `config.txt` are at the top level,
-   not in a folder.
+   (`kernel_2712.img`, `kernel8-rpi4.img`, `kernel8-32.img`, `kernel7.img`,
+   `kernel.img`) and `config.txt` are at the top level, not in a folder (a
+   Pi 4 or 5 with them in a folder shows its firmware's "not found" screen).
 4. Copy your ROMs into the `roms` folder (see below).
 5. Copy your CoCo files to the card. The `disks`, `tapes`, `carts` and
    `programs` folders are there for them, but any folder works.

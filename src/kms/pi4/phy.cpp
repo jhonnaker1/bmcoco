@@ -3,8 +3,8 @@
 //
 // See phy.h for the BCM2711 HDMI PHY calculations and their source.
 //
-// This file is part of BMA800XL, a bare metal Atari 800XL emulator for the
-// Raspberry Pi. See LICENSE for licensing details.
+// This file is part of BMCoco, a bare metal Tandy Color Computer emulator for
+// the Raspberry Pi. See LICENSE for licensing details.
 //
 
 #include "phy.h"

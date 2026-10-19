@@ -9,8 +9,8 @@
 //
 // Pure computation, so tools/pi4kms can test it on a PC.
 //
-// This file is part of BMA800XL, a bare metal Atari 800XL emulator for the
-// Raspberry Pi. See LICENSE for licensing details.
+// This file is part of BMCoco, a bare metal Tandy Color Computer emulator for
+// the Raspberry Pi. See LICENSE for licensing details.
 //
 
 #ifndef BMA800XL_KMS_PI4_PHY_H_
