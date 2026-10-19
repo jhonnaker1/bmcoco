@@ -57,7 +57,7 @@ next item starting with it.
 | Item           | What it does |
 |----------------|--------------|
 | Run a Program  | Choose a disk, tape, cartridge or program and start it: XRoar inserts it and types the commands to run it (`RUN"..."` from a disk, `CLOAD` from a tape, ...) |
-| Disk Drives    | Insert or eject a disk in drives 0-3, and write protect it |
+| Disk Drives    | Insert or eject a disk in drives 0-3, and write protect it; Show Disk Activity (see below) |
 | Hard Disks     | Hard disk images for drives 0 and 1 of an IDE interface (see Hard disks) |
 | DriveWire      | The DriveWire server for the Becker port, built in or on another computer, and the built-in one's drives 0-3 (see The Becker port) |
 | Cassette       | Insert a tape (then type `CLOAD` or `CLOADM`), rewind, eject, fast loading |
@@ -310,6 +310,7 @@ web UI.
 | `artifacts`         | `none`, `simple`, `5bit`, `partial`, `simulated` | XRoar's | Artifact colour renderer |
 | `picture`           | `zoomed`, `title`, `action`, `underscan` | `title` | How much border to show |
 | `aspect`            | number                       | `1.0`    | Multiplies the width of the picture |
+| `disk_activity`     | `0`, `1`                     | `1`      | While a floppy disk is read or written, show its drive, track, side and sector at the bottom left (Disk Drives, Show Disk Activity) |
 | `scale`             | 0.1 to 1.0                   | `1.0`    | Height of the picture as a fraction of the screen (Video, Screen Size; less for a TV that cuts off the edges) |
 | `smooth`            | `0`, `1`                     | `0`      | Bilinear filtering instead of sharp pixels |
 | `crt_shader`        | `0`, `1`                     | `0`      | CRT look (scanlines) from BMC64 |
@@ -383,6 +384,15 @@ can come and go while the emulator runs. Some keyboards need a longer
 enlarge the picture and crop its edges (overscan). Make *Video*, *Screen
 Size* smaller (90% usually does), or turn overscan off on the TV ("Just
 Scan", "Screen Fit" or "1:1").
+
+**A program seems stuck loading**: watch the bottom left of the screen.
+While a floppy disk is read, a red light shows there with the drive (D),
+track (T), side (H) and sector (S), as in `D0 T17 H0 S03`. A light that
+stays on with the track and sector not moving, or a red message (`no disk`:
+the drive is empty; `not found` or `CRC error`: a sector the program wants
+isn't on the disk, or is damaged; `seek error`), usually means the wrong
+disk is in the drive or the disk image is bad. Many DOSes retry for ever
+rather than give up.
 
 **A game's colours are wrong**: choose the other composite phase in *Video*,
 *TV Input*.

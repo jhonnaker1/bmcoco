@@ -93,4 +93,8 @@ void osd_notify(const char *text);
 /* Called by the video output each frame: draws the notification, if any. */
 void osd_draw_notification(uint16_t *fb, int pitch_px, int w, int h);
 
+/* The disk activity line (see platform.c), drawn on the picture. */
+void osd_draw_disk_status(uint16_t *fb, int pitch_px, int w, int h,
+                          const char *text, int light, int error);
+
 #endif /* BMCOCO_OSD_H_ */

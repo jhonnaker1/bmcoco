@@ -346,6 +346,51 @@ if [ -n "${BMCOCO_ROMS:-}" ]; then
     fi
     check_audio coco3play48
 
+    echo "Disk activity"
+    # DOS on a blank disk reads track 34: the light, drive, track, side and
+    # sector at the bottom left. On a disk whose sectors are numbered from
+    # 2, sector 1 isn't found (DOS retries for ever): that is shown in red.
+    mkdir -p "$OUT/disk_ok" "$OUT/disk_rnf"
+    python3 -c "open('$OUT/disk_ok/blank.dsk','wb').write(b'\\xff'*35*18*256)"
+    python3 -c "open('$OUT/disk_rnf/off.dsk','wb').write(bytes([18,1,1,2])+b'\\xff'*35*18*256)"
+    run disk_ok 60 "$BMCOCO_ROMS" "" '200 run blank.dsk\n330 shot busy.ppm\n800 shot idle.ppm\n801 quit\n'
+    run disk_rnf 60 "$BMCOCO_ROMS" "" '200 run off.dsk\n900 shot rnf.ppm\n901 quit\n'
+    # disk_colours FILE: red and bright green pixels at the bottom left
+    disk_colours() {
+        python3 - "$1" <<'PYEOF'
+import sys
+data = open(sys.argv[1], 'rb').read()
+parts = data.split(b'\n', 3)
+w, h = map(int, parts[1].split())
+px = parts[3]
+red = green = 0
+for y in range(h - 40, h):
+    for x in range(0, 420):
+        r, g, b = px[(y * w + x) * 3:(y * w + x) * 3 + 3]
+        if r > 200 and g < 60 and b < 60: red += 1
+        if g > 230 and r < 60 and b < 60: green += 1
+print(red, green)
+PYEOF
+    }
+    read red green <<< "$(disk_colours "$OUT/disk_ok/busy.ppm")"
+    if [ "$red" -gt 0 ] && [ "$red" -lt 400 ] && [ "$green" -gt 200 ]; then
+        pass "disk_ok: the light and the drive's track and sector while loading"
+    else
+        fail disk_ok "no disk activity shown (red $red, green $green; see out/disk_ok/busy.ppm)"
+    fi
+    read red green <<< "$(disk_colours "$OUT/disk_ok/idle.ppm")"
+    if [ "$red" -eq 0 ] && [ "$green" -eq 0 ]; then
+        pass "disk_ok: gone when the disk is idle"
+    else
+        fail disk_ok "still shown when idle (see out/disk_ok/idle.ppm)"
+    fi
+    read red green <<< "$(disk_colours "$OUT/disk_rnf/rnf.ppm")"
+    if [ "$red" -gt 1000 ]; then
+        pass "disk_rnf: a sector not found shown in red"
+    else
+        fail disk_rnf "no error shown (red $red; see out/disk_rnf/rnf.ppm)"
+    fi
+
     echo "Becker port (real ROMs, a stand-in DriveWire server)"
     # The IDE interface (a stand-in HDB-DOS: only its Becker port is used)
     # in xroar.conf. A BASIC program writes A to the port's data register,

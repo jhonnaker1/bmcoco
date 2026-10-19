@@ -10,6 +10,12 @@
 - Video, Screen Size (100% down to 80%): makes the picture and the menu
   smaller, for a TV that cuts off the edges (overscan). The same as the
   `scale` option, now changed without editing `cmdline.txt`
+- Disk activity: while a floppy disk is read or written, a red light and
+  the drive, track, side and sector (`D0 T17 H0 S03`) at the bottom left
+  of the picture, and in red for a few seconds an empty drive, a sector not
+  found, a CRC error or a seek error, so that a program stuck loading (the
+  wrong disk in the drive, a bad image) can be seen to be. Disk Drives,
+  Show Disk Activity (`disk_activity=0`) turns it off
 - Simulator: BMCOCO_SIM_RATE=48000 plays the sound at the Pi 4 and 5's rate
 
 ## 0.5.2 – 2026-10-16

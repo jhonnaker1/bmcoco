@@ -35,6 +35,7 @@
 #include "xalloc.h"
 
 #include "ao.h"
+#include "cart.h"
 #include "events.h"
 #include "hkbd.h"
 #include "joystick.h"
@@ -50,6 +51,7 @@
 #include "vdrive.h"
 #include "vo.h"
 #include "vo_render.h"
+#include "wd279x.h"
 #include "xroar.h"
 
 #include "../host.h"
@@ -279,6 +281,146 @@ static void measure_load(double now)
 	}
 }
 
+/* ---- Disk activity ------------------------------------------------------- */
+
+/* While a floppy disk is read or written: its drive, track, side and
+   sector at the bottom left of the picture, by a red light like a real
+   drive's, so that a program stuck loading can be seen to be (the wrong
+   disk, say). An empty drive, a sector that isn't there or a bad one is
+   shown in red for a few seconds. Read once a frame from the disk
+   controller (the WD279x of an RS-DOS, DragonDOS or Delta cartridge, also
+   in a Multi-Pak), so very short reads can be missed, which doesn't
+   matter: a disk being loaded is read for longer. The disk_activity
+   option (Disk Drives, Show Disk Activity) turns it off. */
+
+static int da_enabled = 1;
+static struct vdrive_info da_drive;   /* from XRoar's drive */
+static struct WD279X *da_fdc;
+static DELEGATE_T1(void, bool) da_intrq;  /* the cartridge's own */
+static unsigned da_commands;          /* commands finished */
+static unsigned da_commands_seen;
+static uint8_t da_track, da_sector;
+static double da_lit_until, da_shown_until, da_error_until;
+static const char *da_error;
+
+static void da_drive_info(void *sptr, int tag, void *smsg)
+{
+	struct ui_state_message *msg = smsg;
+	(void) sptr;
+	(void) tag;
+	if (msg->data != NULL)
+		da_drive = *(const struct vdrive_info *) msg->data;
+}
+
+static void disk_activity_attach(void)
+{
+	int client = messenger_client_register();
+	da_enabled = host_option_int("disk_activity", 1) != 0;
+	ui_messenger_join_group(client, ui_tag_disk_drive_info,
+	                        MESSENGER_NOTIFY_DELEGATE(da_drive_info, NULL));
+}
+
+/* The controller's interrupt, which it raises when a command is done: in
+   between the cartridge's own handler and it, to see how the command went
+   (a DOS retries at once, so an error would be gone by the next frame). */
+static void da_set_intrq(void *sptr, bool value)
+{
+	struct WD279X *fdc = sptr;
+	if (value) {
+		uint8_t st = fdc->status_register;
+		const char *error = NULL;
+		da_commands++;
+		if (st & 0x80)
+			error = "no disk";
+		else if (st & 0x10)
+			error = fdc->status_type1 ? "seek error" : "not found";
+		else if ((st & 0x08) && !fdc->status_type1)
+			error = "CRC error";
+		if (error != NULL) {
+			da_error = error;
+			da_error_until = host_time() + 3.0;
+		}
+	}
+	DELEGATE_CALL(da_intrq, value);
+}
+
+/* The disk controller plugged in, or in a Multi-Pak slot, if any. */
+static struct WD279X *find_fdc(void)
+{
+	struct cart *c;
+	struct part *p;
+	unsigned i;
+	if (xroar.machine == NULL)
+		return NULL;
+	c = xroar.machine->get_interface(xroar.machine, "cart");
+	if (c == NULL)
+		return NULL;
+	p = part_component_by_id(&c->part, "FDC");
+	for (i = 0; p == NULL && i < 4; i++) {
+		char id[6];
+		struct part *slot;
+		snprintf(id, sizeof id, "slot%u", i);
+		slot = part_component_by_id(&c->part, id);
+		if (slot != NULL)
+			p = part_component_by_id(slot, "FDC");
+	}
+	return (struct WD279X *) p;
+}
+
+static void draw_disk_activity(void)
+{
+	struct WD279X *fdc;
+	double now;
+	int busy, active;
+	char text[40];
+	if (!da_enabled)
+		return;
+	fdc = find_fdc();
+	if (fdc == NULL) {
+		da_fdc = NULL;
+		return;
+	}
+	if (fdc != da_fdc || fdc->set_intrq.func != da_set_intrq) {
+		/* Plugged in (or connected again): nothing has happened yet. */
+		da_fdc = fdc;
+		da_intrq = fdc->set_intrq;
+		fdc->set_intrq = DELEGATE_AS1(void, bool, da_set_intrq, fdc);
+		da_commands_seen = da_commands;
+		da_track = fdc->track_register;
+		da_sector = fdc->sector_register;
+		return;
+	}
+	now = host_time();
+	busy = (fdc->status_register & 0x01) != 0;
+	active = busy || da_commands != da_commands_seen
+	         || fdc->track_register != da_track || fdc->sector_register != da_sector;
+	da_commands_seen = da_commands;
+	da_track = fdc->track_register;
+	da_sector = fdc->sector_register;
+	if (busy && xroar.vdrive_interface != NULL
+	    && vdrive_disk_in_drive(xroar.vdrive_interface, da_drive.drive) == NULL) {
+		/* No disk to turn: the controller waits for ever (or until
+		   the DOS gives up). */
+		da_error = "no disk";
+		da_error_until = now + 3.0;
+	}
+	if (active) {
+		da_lit_until = now + 0.25;
+		da_shown_until = now + 2.0;
+	}
+	if (da_error != NULL && now > da_error_until)
+		da_error = NULL;
+	if (da_error != NULL && da_shown_until < da_error_until)
+		da_shown_until = da_error_until;
+	if (now > da_shown_until)
+		return;
+	snprintf(text, sizeof text, "D%u T%02u H%u S%02u%s%s", da_drive.drive,
+	         da_drive.cylinder, da_drive.head, (unsigned) fdc->sector_register,
+	         da_error ? " " : "", da_error ? da_error : "");
+	osd_draw_disk_status(fb_pixels, fb_pitch_px, vp_w, shown_height(), text,
+	                     now <= da_lit_until, da_error != NULL);
+}
+
 static void bm_draw(void *sptr)
 {
 	double now;
@@ -286,6 +428,7 @@ static void bm_draw(void *sptr)
 	if (osd_view)
 		return;
 	track_machine_rate();
+	draw_disk_activity();
 	osd_draw_notification(fb_pixels, fb_pitch_px, vp_w, shown_height());
 	now = host_time();
 	if (turbo) {
@@ -379,6 +522,7 @@ int bmcoco_vsync_locked(void)
 
 void bmcoco_video_settings_changed(void)
 {
+	da_enabled = host_option_int("disk_activity", 1) != 0;
 	update_sync_mode();
 	apply_view();
 }
@@ -622,6 +766,7 @@ static void *ui_new(void *cfg)
 	/* XRoar's host keyboard tables (each front end sets them up). */
 	hk_init();
 	bmcoco_menu_attach();
+	disk_activity_attach();
 	apply_ram_settings();
 	return ui;
 }

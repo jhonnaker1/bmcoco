@@ -37,6 +37,7 @@
 #define C_DKGREEN 0x0400  /* dark green: labels and hints */
 #define C_ORANGE  0xfc00  /* the selection */
 #define C_RED     0xf800
+#define C_DKRED   0x5000  /* the disk light, off */
 
 #define REPEAT_DELAY 0.40
 #define REPEAT_RATE  0.06
@@ -871,4 +872,24 @@ void osd_draw_notification(uint16_t *fb, int pitch_px, int w, int h)
 		draw_char_at(fb, pitch_px, x + (i + 1) * CELL_W, y,
 		             (unsigned char) notify_text[i], C_BLACK, C_GREEN);
 	draw_char_at(fb, pitch_px, x + (len - 1) * CELL_W, y, ' ', C_BLACK, C_GREEN);
+}
+
+/* The disk activity line at the bottom left: a light (lit while the disk
+   is being read or written) and TEXT, red for an error. */
+void osd_draw_disk_status(uint16_t *fb, int pitch_px, int w, int h,
+                          const char *text, int light, int error)
+{
+	int len = (int) strlen(text), x = 8, y = h - CELL_H - 4, row, col, i;
+	uint16_t lamp = light ? C_RED : C_DKRED;
+	if (y < 0 || x + (len + 3) * CELL_W > w)
+		return;
+	draw_char_at(fb, pitch_px, x, y, ' ', C_BLACK, C_BLACK);
+	for (row = 2; row < CELL_H - 2; row++)
+		for (col = 2; col < CELL_W - 2; col++)
+			fb[(y + row) * pitch_px + x + col] = lamp;
+	draw_char_at(fb, pitch_px, x + CELL_W, y, ' ', C_BLACK, C_BLACK);
+	for (i = 0; i < len; i++)
+		draw_char_at(fb, pitch_px, x + (i + 2) * CELL_W, y, (unsigned char) text[i],
+		             error ? C_RED : C_GREEN, C_BLACK);
+	draw_char_at(fb, pitch_px, x + (len + 2) * CELL_W, y, ' ', C_BLACK, C_BLACK);
 }

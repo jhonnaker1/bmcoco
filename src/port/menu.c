@@ -269,8 +269,9 @@ static void disks_menu(void)
 	static char names[4][48];
 	int sel = 0;
 	for (;;) {
-		struct osd_item items[4];
-		int drive, chosen;
+		enum { D_ACTIVITY = 10 };
+		struct osd_item items[8];
+		int drive, chosen, activity = setting_on("disk_activity", TRUE);
 		for (drive = 0; drive < 4; drive++) {
 			struct vdisk *disk = disk_in(drive);
 			snprintf(names[drive], sizeof(names[drive]), "%s",
@@ -281,9 +282,18 @@ static void disks_menu(void)
 			items[drive].flags = OSD_ITEM_SUBMENU;
 			items[drive].id = drive;
 		}
-		chosen = osd_menu("Disk Drives", items, 4, &sel);
+		items[4] = (struct osd_item){"", NULL, OSD_ITEM_LABEL, -1};
+		items[5] = (struct osd_item){"Show Disk Activity", NULL, check(activity), D_ACTIVITY};
+		items[6] = (struct osd_item){"Drive, track, side and sector,", NULL, OSD_ITEM_LABEL, -1};
+		items[7] = (struct osd_item){"at the bottom left while loading.", NULL, OSD_ITEM_LABEL, -1};
+		chosen = osd_menu("Disk Drives", items, 8, &sel);
 		if (chosen < 0)
 			return;
+		if (chosen == D_ACTIVITY) {
+			save_setting("disk_activity", activity ? "0" : "1");
+			bmcoco_video_settings_changed();
+			continue;
+		}
 		drive_menu(chosen);
 	}
 }
