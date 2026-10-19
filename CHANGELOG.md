@@ -1,4 +1,4 @@
-## Unreleased
+## 0.5.4 – 2026-10-19
 
 - NitrOS-9 on the network with the built-in DriveWire server: its virtual
   channels (`/N`) reach the internet, as with DriveWire 4 or pyDriveWire.
