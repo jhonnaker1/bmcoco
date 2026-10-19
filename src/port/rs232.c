@@ -67,6 +67,7 @@
 
 #include "../host.h"
 #include "bmcoco.h"
+#include "netcall.h"
 
 #define RX_SIZE 4096
 #define TX_SIZE 1024
@@ -79,15 +80,6 @@
 #define ST_DCD  0x20    /* set: no carrier */
 #define ST_DSR  0x40    /* set: not ready */
 #define ST_IRQ  0x80
-
-/* A connection being made in the background (as becker.c's). */
-enum { DIALING, DONE, ABANDONED };
-struct dial {
-	char host[64];
-	char port[8];
-	int state;
-	int fd;     /* when DONE: the connection, -1 can't, -2 no such host */
-};
 
 enum { OFFLINE, ONLINE };   /* the modem: taking commands, or the call's */
 
@@ -116,7 +108,8 @@ static struct {
 	/* The modem */
 	int mode;
 	int conn;               /* the call's connection, or -1 */
-	struct dial *dialing;
+	struct netcall *dialing;
+	char address[72];       /* host:port called */
 	int echo, verbose, quiet;
 	char cmd[CMD_SIZE];
 	unsigned cmd_len;
@@ -124,9 +117,7 @@ static struct {
 	int plus;               /* '+' in a row after a quiet second */
 	double plus_time;
 
-	/* Telnet */
-	int iac;                /* 0, or where in an IAC sequence */
-	uint8_t iac_cmd;
+	struct telnet telnet;
 } rs = { .conn = -1, .echo = 1, .verbose = 1 };
 
 /* ---- The 6551 ------------------------------------------------------------ */
@@ -332,112 +323,55 @@ static void reply(int code)
 	rx_puts(text);
 }
 
-static void dial_job(void *arg)
-{
-	struct dial *d = arg;
-	int expected = DIALING;
-	d->fd = host_tcp_connect(d->host, d->port);
-	if (!__atomic_compare_exchange_n(&d->state, &expected, DONE, 0,
-	                                 __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) {
-		/* given up on */
-		if (d->fd >= 0)
-			host_tcp_close(d->fd);
-		free(d);
-	}
-}
-
-static void dial_abandon(void)
-{
-	struct dial *d = rs.dialing;
-	int expected = DIALING;
-	if (d == NULL)
-		return;
-	rs.dialing = NULL;
-	if (!__atomic_compare_exchange_n(&d->state, &expected, ABANDONED, 0,
-	                                 __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) {
-		if (d->fd >= 0)
-			host_tcp_close(d->fd);
-		free(d);
-	}
-}
-
 static void hang_up(void)
 {
-	dial_abandon();
+	netcall_abandon(&rs.dialing);
 	if (rs.conn >= 0) {
 		host_tcp_close(rs.conn);
 		rs.conn = -1;
 	}
 	rs.mode = OFFLINE;
 	rs.tx_len = 0;
-	rs.iac = 0;
+	rs.telnet.state = 0;
 }
 
 static void dial(const char *where)
 {
-	struct dial *d;
-	char host[64];
-	const char *colon;
-	unsigned long port = 23;
-	size_t n;
-	while (*where == ' ')
-		where++;
-	colon = strchr(where, ':');
-	n = colon ? (size_t) (colon - where) : strlen(where);
-	while (n > 0 && where[n - 1] == ' ')
-		n--;
-	if (n == 0 || n >= sizeof host) {
+	char host[64], port[8];
+	if (!netcall_address(where, 23, host, sizeof host, port, sizeof port)) {
 		reply(R_ERROR);
 		return;
 	}
-	memcpy(host, where, n);
-	host[n] = '\0';
-	if (colon != NULL) {
-		char *end;
-		port = strtoul(colon + 1, &end, 10);
-		if (end == colon + 1 || port == 0 || port > 65535) {
-			reply(R_ERROR);
-			return;
-		}
-	}
 	hang_up();
-	d = calloc(1, sizeof(*d));
-	if (d == NULL) {
+	rs.dialing = netcall_start(host, port);
+	if (rs.dialing == NULL) {
 		reply(R_NO_CARRIER);
 		return;
 	}
-	snprintf(d->host, sizeof d->host, "%s", host);
-	snprintf(d->port, sizeof d->port, "%lu", port);
-	d->state = DIALING;
-	d->fd = -1;
-	if (!host_run_in_background(dial_job, d)) {
-		free(d);
-		reply(R_NO_CARRIER);
-		return;
-	}
-	rs.dialing = d;
-	LOG_PRINT("RS-232 Pak: dialling %s:%lu\n", host, port);
+	snprintf(rs.address, sizeof rs.address, "%s:%s", host, port);
+	LOG_PRINT("RS-232 Pak: dialling %s\n", rs.address);
 }
 
 /* A dial finished: CONNECT, or NO CARRIER. */
 static void dial_poll(void)
 {
-	struct dial *d = rs.dialing;
-	if (d == NULL || __atomic_load_n(&d->state, __ATOMIC_ACQUIRE) != DONE)
+	int result;
+	if (rs.dialing == NULL)
 		return;
-	rs.dialing = NULL;
-	if (d->fd >= 0) {
-		rs.conn = d->fd;
+	result = netcall_poll(&rs.dialing);
+	if (result == NETCALL_DIALING)
+		return;
+	if (result >= 0) {
+		rs.conn = result;
 		rs.mode = ONLINE;
-		rs.iac = 0;
-		LOG_PRINT("RS-232 Pak: connected to %s:%s\n", d->host, d->port);
+		rs.telnet.state = 0;
+		LOG_PRINT("RS-232 Pak: connected to %s\n", rs.address);
 		reply(R_CONNECT);
 	} else {
-		LOG_WARN("RS-232 Pak: %s %s:%s\n", d->fd == -2 ? "can't find" : "can't connect to",
-		         d->host, d->port);
+		LOG_WARN("RS-232 Pak: %s %s\n", result == NETCALL_NO_HOST ? "can't find" : "can't connect to",
+		         rs.address);
 		reply(R_NO_CARRIER);
 	}
-	free(d);
 }
 
 /* One command line ("AT..."), case and high bits ignored. */
@@ -528,7 +462,7 @@ static void modem_from_coco(uint8_t c)
 	double now = host_time();
 	if (rs.dialing != NULL) {
 		/* A key while dialling stops it. */
-		dial_abandon();
+		netcall_abandon(&rs.dialing);
 		reply(R_NO_CARRIER);
 		rs.last_tx = now;
 		return;
@@ -570,57 +504,10 @@ static void modem_from_coco(uint8_t c)
 	}
 }
 
-/* Telnet: bytes from the far end, its option requests answered. */
-static void telnet_reply(uint8_t verb, uint8_t option)
+static void rx_put_cb(void *arg, uint8_t c)
 {
-	uint8_t out[3] = {0xff, verb, option};
-	if (rs.conn >= 0)
-		host_tcp_send(rs.conn, out, 3);
-}
-
-static void from_far_end(const uint8_t *buf, int n)
-{
-	int i;
-	for (i = 0; i < n; i++) {
-		uint8_t c = buf[i];
-		switch (rs.iac) {
-		case 0:
-			if (c == 0xff)
-				rs.iac = 1;
-			else
-				rx_put(c);
-			break;
-		case 1:          /* after IAC */
-			if (c == 0xff) {
-				rx_put(0xff);
-				rs.iac = 0;
-			} else if (c >= 251 && c <= 254) {
-				rs.iac_cmd = c;
-				rs.iac = 2;
-			} else if (c == 250) {
-				rs.iac = 3;   /* SB ... IAC SE */
-			} else {
-				rs.iac = 0;
-			}
-			break;
-		case 2:          /* WILL, WONT, DO, DONT and the option */
-			/* Suppress go-ahead (3) both ways, and the far end's echo
-			   (1); nothing else. */
-			if (rs.iac_cmd == 251)        /* WILL */
-				telnet_reply(c == 1 || c == 3 ? 253 : 254, c);
-			else if (rs.iac_cmd == 253)   /* DO */
-				telnet_reply(c == 3 ? 251 : 252, c);
-			rs.iac = 0;
-			break;
-		case 3:          /* in a subnegotiation */
-			if (c == 0xff)
-				rs.iac = 4;
-			break;
-		case 4:
-			rs.iac = c == 240 ? 0 : 3;
-			break;
-		}
-	}
+	(void) arg;
+	rx_put(c);
 }
 
 /* ---- Once a frame -------------------------------------------------------- */
@@ -671,7 +558,7 @@ void bmcoco_rs232_frame(void)
 			if (got < 0)
 				goto closed;
 			if (rs.mode == ONLINE)
-				from_far_end(buf, got);
+				telnet_receive(&rs.telnet, rs.conn, buf, got, rx_put_cb, NULL);
 		}
 	}
 	rx_load();

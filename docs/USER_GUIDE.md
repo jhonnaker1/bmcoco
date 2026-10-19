@@ -228,8 +228,30 @@ interface, which has one too. NitrOS-9's DriveWire builds (such as the
 BMCoco has a DriveWire server built in, so no other computer is needed:
 choose disk images for its drives 0 to 3 in the menu's *DriveWire*
 (NitrOS-9's `/X0` to `/X3`; kept as `dw0` to `dw3` in `bmcoco.cfg`). It
-also gives NitrOS-9 the time. It has no virtual serial channels (`/N`,
-`/Z`), printing or named objects.
+also gives NitrOS-9 the time, and its network (below). It has no `/Z`
+windows, printing or named objects.
+
+### NitrOS-9 on the network
+
+With networking on, the built-in server's virtual channels (NitrOS-9's
+`/N`, `/N0` to `/N14`) reach the internet, as with DriveWire 4 or
+pyDriveWire, so NitrOS-9's network programs and terminal programs work
+with no other computer. The first line a program writes to a channel says
+what it is for:
+
+- `tcp connect host port`: what NitrOS-9's network programs send (its
+  `lib/net.as`). The server connects, in the background (NitrOS-9 keeps
+  running), and answers `OK connected to host:port`, or `FAIL` and an
+  error number (246: nothing answered, 216: no such host). From then on
+  the channel is the connection, both ways, until either end closes it.
+- `ATDT host:port` and the other AT commands: a Hayes modem, as the
+  RS-232 Pak's (see below), for terminal programs on `/N`: `CONNECT` or
+  `NO CARRIER`, `+++`, `ATH`, `ATO`, `ATZ`, `ATV`, `ATQ`, `ATI`. As with
+  pyDriveWire, the modem doesn't echo what's typed until `ATE1`.
+- `dw disk show`, `dw server show`: what NitrOS-9's `dw` command shows.
+
+Incoming connections (`tcp listen`, `join`, `kill`, and a modem answering
+calls) aren't supported.
 
 To use a server on another computer instead (DriveWire 4 or pyDriveWire on
 a PC, for example), set *Server* to *Another Computer* and type its
@@ -434,6 +456,11 @@ goes back to its own mode and keeps it.
 enlarge the picture and crop its edges (overscan). Make *Video*, *Screen
 Size* smaller (90% usually does), or turn overscan off on the TV ("Just
 Scan", "Screen Fit" or "1:1").
+
+**NitrOS-9 can't reach the network**: check that networking is on (the
+address shows at the bottom of the screen at start up) and that the Becker
+port uses the built-in server (*DriveWire*, *Server*); the log shows each
+channel's calls (`DriveWire channel 0: connected to ...`).
 
 **A terminal program can't reach a BBS**: check that *RS-232 Pak (Modem)*
 is on in *Cartridge*, that a cartridge is plugged in (Disk BASIC's

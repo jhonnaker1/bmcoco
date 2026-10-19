@@ -506,6 +506,102 @@ EOF
         fail dw "sector 2 of test.dsk isn't all 8s"
     fi
 
+    echo "The built-in DriveWire server's virtual channels"
+    # BASIC speaks DriveWire through the Becker port as NitrOS-9 does: opens
+    # channel 0 (SERINIT), writes its first line (SERWRITEM), polls SERREAD
+    # (fetching what's waiting with SERREADM), sends back what it got, and
+    # waits for the channel to be reported closed (SERREAD 16). "tcp
+    # connect" must answer OK connected and carry the server's WELCOME (the
+    # call made 120 frames late, every frame shown); to a port nobody
+    # listens on, FAIL 246; "ATDT" CONNECT and WELCOME; "dw disk show" the
+    # drives, then closed.
+    dwch_basic() {
+        printf '%s\n' '300 type 5 POKE &HFF42,&H45:POKE &HFF42,0\n' \
+            "500 type 10 A\$=\"$1\":GOSUB 500\\n" \
+            '800 type 20 S$="":FOR K=1 TO 300:POKE &HFF42,&H43:GOSUB 600:A=R:GOSUB 600:IF A=17 THEN N=R:GOSUB 700\n' \
+            '1500 type 30 IF A=1 THEN S$=S$+CHR$(R)\n' \
+            '1800 type 40 IF A=16 THEN C=1:K=300\n' \
+            '2100 type 50 NEXT:IF C=0 THEN A$=S$:GOSUB 500\n' \
+            '2500 type 60 FOR K=1 TO 300:POKE &HFF42,&H43:GOSUB 600:A=R:GOSUB 600:IF A=16 THEN C=1:K=300\n' \
+            '3200 type 70 NEXT:PRINT S$:IF C THEN PRINT "CLOSED"\n' \
+            '3500 type 80 END\n' \
+            '3700 type 500 POKE &HFF42,&H64:POKE &HFF42,0:POKE &HFF42,LEN(A$)+1:FOR I=1 TO LEN(A$):POKE &HFF42,ASC(MID$(A$,I,1)):NEXT\n' \
+            '4600 type 510 POKE &HFF42,13:RETURN\n' \
+            '4900 type 600 IF (PEEK(&HFF41) AND 2)=0 THEN 600\n' \
+            '5300 type 610 R=PEEK(&HFF42):RETURN\n' \
+            '5600 type 700 POKE &HFF42,&H63:POKE &HFF42,0:POKE &HFF42,N:FOR I=1 TO N:GOSUB 600:S$=S$+CHR$(R):NEXT:RETURN\n' \
+            '6500 type RUN\n' '14000 shot result.ppm' '14000 audio' '14001 quit'
+    }
+    dwch_server() {
+        python3 - "$1" "$2" <<'EOF' &
+import socket, sys
+log = open(sys.argv[1], 'w')
+s = socket.socket()
+s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+s.bind(('127.0.0.1', int(sys.argv[2])))
+s.listen(1)
+s.settimeout(120)
+c, _ = s.accept()
+log.write('connected\n')
+log.flush()
+c.sendall(b'WELCOME\r\n')
+c.settimeout(120)
+got = b''
+while b'WELCOME' not in got:
+    d = c.recv(256)
+    if not d:
+        break
+    got += d
+log.write('got back %r\n' % got)
+log.flush()
+c.close()
+EOF
+    }
+    dwch_run() {
+        local name=$1 command=$2
+        mkdir -p "$OUT/$name/roms"
+        for f in "$BMCOCO_ROMS"/*; do ln -s "$f" "$OUT/$name/roms/" 2>/dev/null; done
+        rm -f "$OUT/$name/roms/hdblba.rom"
+        head -c 8192 /dev/zero > "$OUT/$name/roms/hdblba.rom"
+        printf 'machine coco2bus\nmachine-cart ide\n' > "$OUT/$name/xroar.conf"
+        (cd "$OUT/$name" && dwch_basic "$command" | BMCOCO_SIM_CONNECT_FRAMES=120 BMCOCO_IP=127.0.0.1 \
+            BMCOCO_CMDLINE="root=." "$SIM" > log.txt 2>&1)
+    }
+    dwch_server "$OUT/dwch_tcp_server.log" 65519
+    server=$!
+    sleep 1
+    dwch_run dwch_tcp "tcp connect 127.0.0.1 65519"
+    kill $server 2>/dev/null; wait $server 2>/dev/null
+    check_log dwch_tcp "DriveWire channel 0: connected to 127.0.0.1:65519" "tcp connect connects (in the background)"
+    if grep -q "got back .*OK connected to 127.0.0.1:65519.*WELCOME" "$OUT/dwch_tcp_server.log" 2>/dev/null; then
+        pass "dwch_tcp: the CoCo got OK connected and the server's WELCOME, and sent them back"
+    else
+        fail dwch_tcp "the CoCo didn't get OK connected and WELCOME (see out/dwch_tcp_server.log)"
+    fi
+    check_log dwch_tcp "DriveWire channel 0: the call ended" "the server hanging up is noticed"
+    dwch_run dwch_fail "tcp connect 127.0.0.1 65520"
+    check_log dwch_fail "DriveWire channel 0: can't connect to 127.0.0.1:65520" "a connection nobody answers fails"
+    dwch_server "$OUT/dwch_at_server.log" 65521
+    server=$!
+    sleep 1
+    dwch_run dwch_at "ATDT127.0.0.1:65521"
+    kill $server 2>/dev/null; wait $server 2>/dev/null
+    if grep -q "got back .*CONNECT.*WELCOME" "$OUT/dwch_at_server.log" 2>/dev/null; then
+        pass "dwch_at: ATDT: the CoCo got CONNECT and the server's WELCOME"
+    else
+        fail dwch_at "ATDT: no CONNECT and WELCOME (see out/dwch_at_server.log)"
+    fi
+    dwch_run dwch_dw "dw disk show"
+    for name in dwch_tcp dwch_fail dwch_at dwch_dw; do
+        line=$(grep "frames presented" "$OUT/$name/log.txt" | tail -1)
+        presented=$(echo "$line" | sed 's/.*: \([0-9]*\) frames presented/\1/')
+        if [ "${presented:-0}" -ge 14000 ]; then
+            pass "$name: the CoCo kept going ($presented/14000 frames)"
+        else
+            fail $name "frames presented: $line"
+        fi
+    done
+
     becker becker 0
     echo "Becker port: a server slow to answer doesn't stop the CoCo"
     becker becker_slow 300

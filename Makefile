@@ -34,7 +34,7 @@ XROAR_LIB := $(BUILD)/libxroar.a
 
 OBJS = src/main.o src/kernel.o src/logging.o src/options.o \
        src/port/platform.o src/port/joystick.o src/port/menu.o src/port/osd.o \
-       src/port/becker.o src/port/dwserver.o src/port/rs232.o src/port/posix_extra.o src/port/fswrap.o \
+       src/port/becker.o src/port/dwserver.o src/port/rs232.o src/port/netcall.o src/port/posix_extra.o src/port/fswrap.o \
        src/network.o src/network_time_sync.o \
        src/webui/webui.o src/webui/webui_http.o src/webui/webui_fs.o \
        src/webui/webui_machine.o src/webui/webui_assets.o \

@@ -23,7 +23,7 @@ OUT := build
 OBJS := $(addprefix $(OUT)/portalib/,$(XROAR_PORTALIB_SRCS:.c=.o)) \
         $(addprefix $(OUT)/xroar/,$(XROAR_SRCS:.c=.o)) \
         $(OUT)/port/platform.o $(OUT)/port/joystick.o $(OUT)/port/menu.o \
-        $(OUT)/port/osd.o $(OUT)/port/becker.o $(OUT)/port/dwserver.o $(OUT)/port/rs232.o $(OUT)/port/posix_extra.o \
+        $(OUT)/port/osd.o $(OUT)/port/becker.o $(OUT)/port/dwserver.o $(OUT)/port/rs232.o $(OUT)/port/netcall.o $(OUT)/port/posix_extra.o \
         $(OUT)/host_sim.o $(OUT)/live.o
 
 all: $(OUT)/bmcoco_sim

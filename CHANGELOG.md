@@ -1,5 +1,12 @@
 ## Unreleased
 
+- NitrOS-9 on the network with the built-in DriveWire server: its virtual
+  channels (`/N`) reach the internet, as with DriveWire 4 or pyDriveWire.
+  `tcp connect host port` (NitrOS-9's network programs) connects in the
+  background and answers `OK connected` or `FAIL`; `ATDT` and the AT
+  commands make a channel a Hayes modem, for terminal programs; `dw disk
+  show` and `dw server show`. See "NitrOS-9 on the network" in the User
+  Guide
 - The RS-232 Pak, with a virtual modem: Cartridge, *RS-232 Pak (Modem)*
   (`rs232=1`) puts a 6551 at `$FF68` beside the cartridge plugged in, for
   CoCo terminal programs and NitrOS-9's `/T2`, and `ATDTbbs.example.com:23`
