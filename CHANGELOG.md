@@ -1,4 +1,4 @@
-## Unreleased
+## 0.5.3 – 2026-10-19
 
 - Pi Zero, 2, 3 and 4: run the ARM at its full clock. Without an operating
   system asking for more the firmware left it at its lowest (600 MHz on a
@@ -44,6 +44,8 @@
     `src/kms/`, as in BMA800XL
   - Troubleshooting: an 8BitDo M30 2.4G whose receiver is in Switch mode
 - Simulator: BMCOCO_SIM_RATE=48000 plays the sound at the Pi 4 and 5's rate
+- docs/SIMULATOR.md: testing and debugging BMCoco on a PC (with gdb, lldb
+  or strace), XRoar's traces, and getting a log from the Pi
 
 ## 0.5.2 – 2026-10-16
 
