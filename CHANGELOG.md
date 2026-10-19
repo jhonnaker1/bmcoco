@@ -23,6 +23,12 @@
   emulator opening a file (the cartridge's ROM, at the reset that follows)
   waited for it for ever, and the network with it (no ping). The Becker
   port now uses Circle's own sockets
+- Becker port with a DriveWire server on another computer: replies come
+  back within the frame. Circle runs the network once a frame, so each
+  request and reply took one or two frames (two of them per sector for
+  HDB-DOS); while the CoCo waits for a reply the network now runs every
+  half millisecond. A port that isn't a number from 1 to 65535 is reported
+  in the log rather than tried. Both from a tester's patch
 - From BMA800XL 1.4.1 and 1.4.2:
   - The menus can be used with GPIO joysticks: either one moves, fire
     chooses

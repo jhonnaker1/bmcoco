@@ -441,7 +441,7 @@ EOF
         server=$!
         sleep 1
         (cd "$OUT/$name" && printf '%s\n' '300 type 10 POKE &HFF42,65\n' '500 type 20 IF PEEK(&HFF41)=0 THEN 20\n' \
-            '800 type 30 POKE &HFF42,PEEK(&HFF42)\n' '1100 type RUN\n' '2000 shot result.ppm' '2001 quit' | \
+            '800 type 30 POKE &HFF42,PEEK(&HFF42)\n' '1100 type RUN\n' '1999 audio' '2000 shot result.ppm' '2001 quit' | \
             BMCOCO_REFRESH=60 BMCOCO_IP=127.0.0.1 BMCOCO_SIM_CONNECT_FRAMES=$frames \
             BMCOCO_CMDLINE="root=. becker_ip=127.0.0.1 becker_port=65511" "$SIM" > log.txt 2>&1)
         wait $server 2>/dev/null
@@ -455,6 +455,21 @@ EOF
             pass "$name: BASIC read the server's answer"
         else
             fail $name "BASIC didn't read Z (see out/$name/server.log)"
+        fi
+        # While BASIC waited for Z, the port let the network run between
+        # frames (every 0.5 ms), and the CoCo kept every frame.
+        yields=$(grep "yields between frames" "$OUT/$name/log.txt" | sed 's/.*\] \([0-9]*\) yields.*/\1/')
+        if [ "${yields:-0}" -gt 0 ]; then
+            pass "$name: the network polled while waiting for the reply ($yields times)"
+        else
+            fail $name "no polling while waiting for the reply"
+        fi
+        line=$(grep "frames presented" "$OUT/$name/log.txt" | tail -1)
+        presented=$(echo "$line" | sed 's/.*: \([0-9]*\) frames presented/\1/')
+        if [ "${presented:-0}" -ge 1999 ]; then
+            pass "$name: no dropped frames ($presented/1999)"
+        else
+            fail $name "frames presented: $line"
         fi
     }
     echo "The built-in DriveWire server"
@@ -492,6 +507,16 @@ EOF
     becker becker 0
     echo "Becker port: a server slow to answer doesn't stop the CoCo"
     becker becker_slow 300
+
+    echo "Becker port: a port that isn't a number"
+    mkdir -p "$OUT/badport/roms"
+    for f in "$BMCOCO_ROMS"/*; do ln -s "$f" "$OUT/badport/roms/" 2>/dev/null; done
+    head -c 8192 /dev/zero > "$OUT/badport/roms/hdblba.rom"
+    printf 'machine coco2bus\nmachine-cart ide\n' > "$OUT/badport/xroar.conf"
+    (cd "$OUT/badport" && printf '%s\n' '300 type PRINT PEEK(&HFF41)\n' '400 quit' | \
+        BMCOCO_REFRESH=60 BMCOCO_IP=127.0.0.1 \
+        BMCOCO_CMDLINE="root=. becker_ip=127.0.0.1 becker_port=65x11" "$SIM" > log.txt 2>&1)
+    check_log badport "port \(65x11\) must be a number from 1 to 65535" "a bad port is reported, not tried"
 fi
 
 echo

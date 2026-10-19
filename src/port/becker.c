@@ -25,6 +25,11 @@
  *    (no DriveWire server at that address) takes Circle about 3 minutes
  *    to give up on. Until it connects, the port reads as empty, which
  *    NitrOS-9 and HDB-DOS take as no DriveWire server.
+ *  - Replies come back within the frame: Circle runs the network only when
+ *    the emulator lets it, once a frame, so a request and its reply would
+ *    take one or two frames each, slower than a serial cable. While the
+ *    CoCo waits for a reply, the port lets the network run every half
+ *    millisecond (an idea of a BMCoco tester's).
  *
  * The server is becker_ip and becker_port in cmdline.txt (or the menu's
  * DriveWire page): XRoar's -becker-ip and -becker-port.
@@ -53,6 +58,8 @@
 #define INPUT_BUFFER_SIZE 262
 #define OUTPUT_BUFFER_SIZE 16
 #define RETRY_SECONDS 10.0
+/* How often the network runs while the CoCo waits for a reply. */
+#define POLL_SECONDS 0.0005
 
 /* A connection being made in the background. Whichever finishes with it
    last, the background job or the Becker port giving up on it, frees it:
@@ -78,6 +85,9 @@ struct becker {
 	uint8_t output_buf[OUTPUT_BUFFER_SIZE];
 	int output_buf_length;
 	int builtin;  /* talking to the built-in server */
+	int awaiting; /* sent something, nothing back yet */
+	double last_poll;
+	int bad_port_logged;
 };
 
 /* TRUE if the server is the built-in one. Looked at each time, so that
@@ -122,6 +132,7 @@ static void disconnect(struct becker *b)
 	b->sockfd = -1;
 	b->input_buf_ptr = b->input_buf_length = 0;
 	b->output_buf_length = 0;
+	b->awaiting = 0;
 }
 
 /* The background job: looks up the server and connects to it, which may
@@ -161,6 +172,14 @@ static void abandon(struct becker *b)
 	}
 }
 
+/* TRUE if PORT is a port number, 1 to 65535. */
+static int valid_port(const char *port)
+{
+	char *end;
+	unsigned long n = strtoul(port, &end, 10);
+	return end != port && *end == '\0' && n >= 1 && n <= 65535;
+}
+
 /* Connects to the server, if it isn't connected and it's time to try:
    starts connecting in the background, and later takes the connection. */
 static void try_connect(struct becker *b)
@@ -195,6 +214,14 @@ static void try_connect(struct becker *b)
 	}
 	if (now < b->next_try)
 		return;
+	if (!valid_port(port)) {
+		if (!b->bad_port_logged)
+			LOG_WARN("Becker port: the DriveWire server's port (%s) must be a "
+			         "number from 1 to 65535\n", port);
+		b->bad_port_logged = 1;
+		b->next_try = now + RETRY_SECONDS;
+		return;
+	}
 	/* No network yet (it starts after the emulator): look again in a
 	   second. */
 	if (!host_network_address(address, sizeof(address))) {
@@ -227,10 +254,26 @@ static void fetch_input(struct becker *b)
 	if (got > 0) {
 		b->input_buf_ptr = 0;
 		b->input_buf_length = got;
+		b->awaiting = 0;
 	} else if (got < 0) {
 		LOG_WARN("Becker port: the DriveWire server closed the connection\n");
 		disconnect(b);
 	}
+}
+
+/* While the CoCo waits for a reply that hasn't come, lets the network run
+   now and then, rather than only once a frame. */
+static void poll_network(struct becker *b)
+{
+	double now;
+	if (b->sockfd < 0 || !b->awaiting || b->input_buf_ptr < b->input_buf_length)
+		return;
+	now = host_time();
+	if (now - b->last_poll < POLL_SECONDS)
+		return;
+	b->last_poll = now;
+	host_yield();
+	fetch_input(b);
 }
 
 static void write_output(struct becker *b)
@@ -242,6 +285,7 @@ static void write_output(struct becker *b)
 	if (sent > 0) {
 		memmove(b->output_buf, b->output_buf + sent, (size_t) (b->output_buf_length - sent));
 		b->output_buf_length -= sent;
+		b->awaiting = 1;
 	} else if (sent < 0) {
 		LOG_WARN("Becker port: can't send to the DriveWire server\n");
 		disconnect(b);
@@ -280,6 +324,7 @@ uint8_t becker_read_status(struct becker *b)
 	try_connect(b);
 	write_output(b);   /* anything written before it connected */
 	fetch_input(b);
+	poll_network(b);
 	return b->input_buf_ptr < b->input_buf_length ? 0x02 : 0x00;
 }
 

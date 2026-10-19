@@ -208,8 +208,11 @@ void host_sleep_us(unsigned us)
 	tick();
 }
 
+static long yields;   /* host_yield() calls, for the Becker port's test */
+
 void host_yield(void)
 {
+	yields++;
 	if (live)
 		now = real_time();
 	else
@@ -591,6 +594,7 @@ static void run_script(void)
 			        snd_nonzero);
 			fprintf(stderr, "[sim] frame %ld: %ld frames presented\n", frame, presents);
 		} else if (strcmp(cmd, "quit") == 0) {
+			fprintf(stderr, "[sim] %ld yields between frames\n", yields);
 			fprintf(stderr, "[sim] quit at frame %ld (%.2f s)\n", frame, now);
 			exit(0);
 		}
