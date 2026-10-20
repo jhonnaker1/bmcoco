@@ -1,5 +1,9 @@
 ## Unreleased
 
+- Fixed: hard disks chosen in the menu were lost at the next boot when no
+  machine was set (`machine=`): BMCoco then starts the first CoCo it has
+  ROMs for, which came with RS-DOS instead of the IDE interface. The
+  interface (and its images) now goes back in
 - Hard disk and DriveWire activity, shown at the bottom left as the floppy
   disk's is (*Show Disk Activity*): `HD0 LSN 1234` for the IDE interface
   and the NX32's and MOOH's SD card, `DW0 LSN 1234` for DriveWire (the

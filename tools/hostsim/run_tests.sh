@@ -494,6 +494,21 @@ PYEOF
     activity_shown activity dw_error 500 100000 0 0 "DriveWire's empty drive in red"
     activity_shown activity idle 0 0 0 0 "gone once all is quiet"
 
+    echo "Hard disks when BMCoco picks the machine"
+    # With no machine= BMCoco switches to the first CoCo it has ROMs for,
+    # which comes with RS-DOS: the IDE interface chosen for the hard disks
+    # must go back in, with its image (the stand-in HDB-DOS reads it).
+    mkdir -p "$OUT/hdpick"
+    ln -s "$OUT/activity/disks" "$OUT/hdpick/disks"
+    cp "$OUT/activity/bmcoco.cfg" "$OUT/hdpick/bmcoco.cfg"
+    run hdpick 60 "$OUT/activity/roms" "" '100 shot hd.ppm\n101 quit\n'
+    if [ "$(grep '^\[part:' "$OUT/hdpick/log.txt" | grep -v 'part:coco' | tail -1)" = "[part:ide] Glenside | IDE interface" ]; then
+        pass "hdpick: the IDE interface is plugged in after the machine is chosen"
+    else
+        fail hdpick "the IDE interface didn't come back (see out/hdpick/log.txt)"
+    fi
+    activity_shown hdpick hd 1 400 200 100000 "its hard disk is there (read by the stand-in HDB-DOS)"
+
     echo "Becker port (real ROMs, a stand-in DriveWire server)"
     # On the Pi the C library's socket calls hold its open files' lock while
     # they wait: a connect() in the background then hung the Pi as soon as

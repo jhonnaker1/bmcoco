@@ -887,6 +887,28 @@ const char *bmcoco_missing_roms(void)
 	return missing[0] != '\0' ? missing : "the machine's ROMs";
 }
 
+/* The cartridge given for the hard disks (hd_cart, with hd0 or hd1, as
+   build_args() passes them) back in after a machine change, which brings
+   the new machine's own (RS-DOS on a CoCo 2). XRoar gives it the images
+   again as it plugs it in. */
+static void restore_hd_cart(void)
+{
+	struct cart_config *cc;
+	struct cart *c;
+	const char *name = host_option("hd_cart", "");
+	if (name[0] == '\0' || (host_option("hd0", "")[0] == '\0'
+	                         && host_option("hd1", "")[0] == '\0'))
+		return;
+	cc = cart_config_by_name(name);
+	if (cc == NULL || xroar.machine == NULL)
+		return;
+	c = xroar.machine->get_interface(xroar.machine, "cart");
+	if (c != NULL && c->config == cc)
+		return;
+	ui_update_state(-1, ui_tag_cartridge, cc->id, NULL);
+	xroar_hard_reset();
+}
+
 /* Without machine= in cmdline.txt, start the first CoCo there are ROMs for
    (XRoar on its own would prefer a Dragon). */
 static void choose_machine(void)
@@ -901,16 +923,20 @@ static void choose_machine(void)
 	for (i = 0; preferred[i] != NULL; i++) {
 		struct machine_config *mc = machine_config_by_name(preferred[i]);
 		if (mc != NULL && machine_works(mc)) {
-			if (mc != xroar.machine_config)
+			if (mc != xroar.machine_config) {
 				ui_update_state(-1, ui_tag_machine, mc->id, NULL);
+				restore_hd_cart();
+			}
 			return;
 		}
 	}
 	/* None: stay with a CoCo 2, which tells what it's missing. */
 	{
 		struct machine_config *mc = machine_config_by_name("coco2bus");
-		if (mc != NULL && mc != xroar.machine_config)
+		if (mc != NULL && mc != xroar.machine_config) {
 			ui_update_state(-1, ui_tag_machine, mc->id, NULL);
+			restore_hd_cart();
+		}
 	}
 }
 
