@@ -389,7 +389,7 @@ web UI.
 | `artifacts`         | `none`, `simple`, `5bit`, `partial`, `simulated` | XRoar's | Artifact colour renderer |
 | `picture`           | `zoomed`, `title`, `action`, `underscan` | `title` | How much border to show |
 | `aspect`            | number                       | `1.0`    | Multiplies the width of the picture |
-| `disk_activity`     | `0`, `1`                     | `1`      | While a floppy disk is read or written, show its drive, track, side and sector at the bottom left (Disk Drives, Show Disk Activity) |
+| `disk_activity`     | `0`, `1`                     | `1`      | While a floppy disk, a hard disk or a DriveWire drive is read or written, show the drive and sector at the bottom left (Disk Drives, Show Disk Activity) |
 | `scale`             | 0.1 to 1.0                   | `1.0`    | Height of the picture as a fraction of the screen (Video, Screen Size; less for a TV that cuts off the edges) |
 | `smooth`            | `0`, `1`                     | `0`      | Bilinear filtering instead of sharp pixels |
 | `crt_shader`        | `0`, `1`                     | `0`      | CRT look (scanlines) from BMC64 |
@@ -490,6 +490,19 @@ the drive is empty; `not found` or `CRC error`: a sector the program wants
 isn't on the disk, or is damaged; `seek error`), usually means the wrong
 disk is in the drive or the disk image is bad. Many DOSes retry for ever
 rather than give up.
+
+Hard disks and DriveWire drives are shown there the same way, whichever
+was busy last:
+
+- `HD0 LSN 1234`: hard disk 0 or 1 of the IDE interface (HDB-DOS,
+  NitrOS-9), or the NX32's or MOOH's SD card, at sector 1234. A program
+  that uses the drive's cylinders and heads instead shows `HD0 C12 H3 S4`.
+  `error` in red: the drive turned the command down (a sector past the
+  end of the image, or no drive there).
+- `DW0 LSN 1234`: DriveWire drive 0 at sector 1234, with the built-in
+  server or one on another computer. In red, what the server answered:
+  `no disk` (nothing in that drive), `write protected`, `CRC error`,
+  `read error` or `write error`.
 
 **A game's colours are wrong**: choose the other composite phase in *Video*,
 *TV Input*.

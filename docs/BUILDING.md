@@ -173,6 +173,8 @@ with `tools/gen_webui_assets.py` whenever an asset changes.
 | `src/port/becker.c`          | XRoar's Becker port (DriveWire over TCP, connecting in the background), or the built-in server |
 | `src/port/hires.c`           | The Tandy Hi-Res Joystick Interface with the USB mouse (`hjoy0`), timed from the DAC's writes |
 | `src/port/dwserver.c`        | The built-in DriveWire server               |
+| `src/port/activity.c`        | Hard disk and DriveWire activity, shown with the floppy's: seen on the cartridge bus and in the Becker port |
+| `src/port/cartbus.c`         | The RS-232 Pak and the activity light beside the cartridge plugged in (one wrapper round its read and write) |
 | `src/port/config.h`          | XRoar's build configuration                 |
 | `src/port/xroar.mk`          | Which XRoar sources are built               |
 | `src/patches/`               | Changes applied to Circle by `make_all.sh`  |

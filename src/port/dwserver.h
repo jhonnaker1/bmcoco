@@ -21,6 +21,11 @@ void dwserver_write(uint8_t byte);
 int dwserver_ready(void);
 uint8_t dwserver_read(void);
 
+/* The bytes a command needs, from the IN_LEN bytes of it that have come
+   (only the first three are looked at), and the virtual channels open
+   (256 flags): DriveWire's commands are as long as their first bytes say. */
+int dwserver_command_length(const uint8_t *in, int in_len, const uint8_t *open_channels);
+
 /* Puts the disk image PATH in DRIVE (0 to 3), or empties it (NULL or "").
    Returns 0 if the image can't be opened. */
 int dwserver_set_drive(int drive, const char *path);

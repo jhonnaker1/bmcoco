@@ -149,6 +149,20 @@ static struct channel {
 } channels[CHANNELS];
 static unsigned next_channel;   /* where SERREAD looks first */
 
+/* The channels start with no connection (-1): left as C leaves them,
+   all 0, closing them would close connection 0, whatever had it (another
+   channel's call, the RS-232 Pak's; the PC simulator's standard input). */
+static void channels_init(void)
+{
+	static int done;
+	unsigned n;
+	if (done)
+		return;
+	done = 1;
+	for (n = 0; n < CHANNELS; n++)
+		channels[n].conn = -1;
+}
+
 /* The command coming in: opcode, arguments. */
 static uint8_t in[8 + SECTOR];
 static int in_len;
@@ -626,13 +640,12 @@ static void serread(void)
 	reply_byte(0);
 }
 
-/* The bytes the command in in[] needs, from what has come so far. */
-static int command_length(void)
+int dwserver_command_length(const uint8_t *in, int in_len, const uint8_t *open_channels)
 {
 	uint8_t op = in[0];
-	int open = in_len >= 2 && channel_open[in[1]];
+	int open = in_len >= 2 && open_channels[in[1]];
 	if (op >= OP_FASTWRITE && op <= OP_FASTWRITE + 15)
-		return channel_open[op - OP_FASTWRITE] ? 2 : 1;
+		return open_channels[op - OP_FASTWRITE] ? 2 : 1;
 	switch (op) {
 	case OP_DWINIT: case OP_SERINIT: case OP_SERTERM: case OP_PRINT:
 		return 2;
@@ -776,6 +789,7 @@ static void run_command(void)
 void dwserver_reset(void)
 {
 	unsigned n;
+	channels_init();
 	in_len = 0;
 	await_checksum = 0;
 	out_len = out_pos = 0;
@@ -786,6 +800,7 @@ void dwserver_reset(void)
 
 void dwserver_write(uint8_t byte)
 {
+	channels_init();
 	if (await_checksum) {
 		in[in_len++] = byte;
 		if (in_len == 2) {
@@ -801,7 +816,7 @@ void dwserver_write(uint8_t byte)
 	}
 	if (in_len < (int) sizeof(in))
 		in[in_len++] = byte;
-	if (in_len >= command_length()) {
+	if (in_len >= dwserver_command_length(in, in_len, channel_open)) {
 		run_command();
 		in_len = 0;
 	}

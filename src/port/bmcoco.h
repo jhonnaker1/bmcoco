@@ -8,6 +8,7 @@
 #ifndef BMCOCO_PORT_H_
 #define BMCOCO_PORT_H_
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #ifndef TRUE
@@ -90,6 +91,18 @@ void bmcoco_hires_frame(void);
 void bmcoco_rs232_settings_changed(void);
 int bmcoco_rs232_enabled(void);
 void bmcoco_rs232_frame(void);
+/* Its 6551 on the cartridge bus (cartbus.c), and the bus wrapped again. */
+uint8_t bmcoco_rs232_bus_read(uint16_t A, bool P2, bool R2, uint8_t D);
+void bmcoco_rs232_bus_write(uint16_t A, bool P2, bool R2, uint8_t D);
+void bmcoco_rs232_bus_reset(void);
+void bmcoco_rs232_bus_changed(void);
+
+/* cartbus.c: the RS-232 Pak and the activity light beside the cartridge
+   plugged in, put in (or taken out) once a frame; the cartridge, while it
+   is wrapped. */
+struct cart;
+void cartbus_frame(void);
+struct cart *cartbus_cart(void);
 
 /* menu.c */
 void bmcoco_menu(void);

@@ -53,6 +53,7 @@
 #include "xroar.h"
 
 #include "../host.h"
+#include "activity.h"
 #include "dwserver.h"
 
 #define INPUT_BUFFER_SIZE 262
@@ -315,6 +316,7 @@ void becker_reset(struct becker *b)
 {
 	if (b->builtin == 1)
 		dwserver_reset();
+	activity_dw_reset();
 }
 
 uint8_t becker_read_status(struct becker *b)
@@ -331,19 +333,26 @@ uint8_t becker_read_status(struct becker *b)
 uint8_t becker_read_data(struct becker *b)
 {
 	uint8_t r;
-	if (use_builtin(b))
-		return dwserver_read();
+	if (use_builtin(b)) {
+		if (!dwserver_ready())
+			return 0x00;
+		r = dwserver_read();
+		activity_dw_read(r);
+		return r;
+	}
 	fetch_input(b);
 	if (b->input_buf_ptr >= b->input_buf_length)
 		return 0x00;
 	r = b->input_buf[b->input_buf_ptr++];
 	if (b->input_buf_ptr == b->input_buf_length)
 		b->input_buf_ptr = b->input_buf_length = 0;
+	activity_dw_read(r);
 	return r;
 }
 
 void becker_write_data(struct becker *b, uint8_t D)
 {
+	activity_dw_write(D);
 	if (use_builtin(b)) {
 		dwserver_write(D);
 		return;

@@ -464,6 +464,36 @@ PYEOF
         fail disk_rnf "no error shown (red $red; see out/disk_rnf/rnf.ppm)"
     fi
 
+    echo "Hard disk and DriveWire activity"
+    # A stand-in HDB-DOS (make_activity_test.py), which Extended BASIC runs
+    # as it boots, reads IDE drive 0 sector 7, then a sector past the end of
+    # the image, then DriveWire drive 0 sector 5 (the built-in server), then
+    # empty DriveWire drive 3, a second and a half apart: each is shown in
+    # turn, the light on while it's read, the errors in red.
+    mkdir -p "$OUT/activity/roms" "$OUT/activity/disks"
+    for f in "$BMCOCO_ROMS"/*; do ln -s "$f" "$OUT/activity/roms/" 2>/dev/null; done
+    rm -f "$OUT/activity/roms/hdblba.rom"   # a link to the ROM folder's, if it has one
+    python3 "$HERE/make_activity_test.py" "$OUT/activity/roms" > /dev/null || exit 1
+    head -c 1048576 /dev/zero > "$OUT/activity/disks/hd.vhd"
+    head -c 161280 /dev/zero > "$OUT/activity/disks/dw.dsk"
+    printf 'hd0=disks/hd.vhd\nhd_cart=ide\ndw0=disks/dw.dsk\n' > "$OUT/activity/bmcoco.cfg"
+    run activity 60 "$OUT/activity/roms" "machine=coco2bus" '100 shot hd.ppm\n160 shot hd_off.ppm\n240 shot hd_error.ppm\n320 shot dw.ppm\n440 shot dw_error.ppm\n650 shot idle.ppm\n651 quit\n'
+    # activity_shown NAME FILE RED_MIN RED_MAX GREEN_MIN GREEN_MAX MESSAGE
+    activity_shown() {
+        read red green <<< "$(disk_colours "$OUT/$1/$2.ppm")"
+        if [ "$red" -ge "$3" ] && [ "$red" -le "$4" ] && [ "$green" -ge "$5" ] && [ "$green" -le "$6" ]; then
+            pass "$1: $7"
+        else
+            fail "$1" "$7: red $red, green $green (see out/$1/$2.ppm)"
+        fi
+    }
+    activity_shown activity hd 1 400 200 100000 "the light and HD0's sector while it's read"
+    activity_shown activity hd_off 0 0 200 100000 "the sector stays shown, the light off"
+    activity_shown activity hd_error 500 100000 0 0 "a sector past the end in red"
+    activity_shown activity dw 1 400 200 100000 "the light and DriveWire drive 0's sector"
+    activity_shown activity dw_error 500 100000 0 0 "DriveWire's empty drive in red"
+    activity_shown activity idle 0 0 0 0 "gone once all is quiet"
+
     echo "Becker port (real ROMs, a stand-in DriveWire server)"
     # On the Pi the C library's socket calls hold its open files' lock while
     # they wait: a connect() in the background then hung the Pi as soon as

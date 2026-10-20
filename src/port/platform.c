@@ -38,6 +38,7 @@
 #include "cart.h"
 #include "events.h"
 #include "hkbd.h"
+#include "activity.h"
 #include "joystick.h"
 #include "logging.h"
 #include "machine.h"
@@ -290,8 +291,10 @@ static void measure_load(double now)
    shown in red for a few seconds. Read once a frame from the disk
    controller (the WD279x of an RS-DOS, DragonDOS or Delta cartridge, also
    in a Multi-Pak), so very short reads can be missed, which doesn't
-   matter: a disk being loaded is read for longer. The disk_activity
-   option (Disk Drives, Show Disk Activity) turns it off. */
+   matter: a disk being loaded is read for longer. The hard disks and
+   DriveWire are shown in the same place (activity.c), whichever of them
+   was busy last. The disk_activity option (Disk Drives, Show Disk
+   Activity) turns it off. */
 
 static int da_enabled = 1;
 static struct vdrive_info da_drive;   /* from XRoar's drive */
@@ -301,6 +304,7 @@ static unsigned da_commands;          /* commands finished */
 static unsigned da_commands_seen;
 static uint8_t da_track, da_sector;
 static double da_lit_until, da_shown_until, da_error_until;
+static double da_last;                /* when the floppy was last busy */
 static const char *da_error;
 
 static void da_drive_info(void *sptr, int tag, void *smsg)
@@ -316,6 +320,7 @@ static void disk_activity_attach(void)
 {
 	int client = messenger_client_register();
 	da_enabled = host_option_int("disk_activity", 1) != 0;
+	activity_set_enabled(da_enabled);
 	ui_messenger_join_group(client, ui_tag_disk_drive_info,
 	                        MESSENGER_NOTIFY_DELEGATE(da_drive_info, NULL));
 }
@@ -367,18 +372,16 @@ static struct WD279X *find_fdc(void)
 	return (struct WD279X *) p;
 }
 
-static void draw_disk_activity(void)
+/* The floppy's line, if it is shown: its TEXT, whether its light is LIT
+   and whether it's an ERROR. */
+static int floppy_line(double now, char *text, unsigned size, int *lit, int *error)
 {
 	struct WD279X *fdc;
-	double now;
 	int busy, active;
-	char text[40];
-	if (!da_enabled)
-		return;
 	fdc = find_fdc();
 	if (fdc == NULL) {
 		da_fdc = NULL;
-		return;
+		return 0;
 	}
 	if (fdc != da_fdc || fdc->set_intrq.func != da_set_intrq) {
 		/* Plugged in (or connected again): nothing has happened yet. */
@@ -388,9 +391,8 @@ static void draw_disk_activity(void)
 		da_commands_seen = da_commands;
 		da_track = fdc->track_register;
 		da_sector = fdc->sector_register;
-		return;
+		return 0;
 	}
-	now = host_time();
 	busy = (fdc->status_register & 0x01) != 0;
 	active = busy || da_commands != da_commands_seen
 	         || fdc->track_register != da_track || fdc->sector_register != da_sector;
@@ -407,18 +409,43 @@ static void draw_disk_activity(void)
 	if (active) {
 		da_lit_until = now + 0.25;
 		da_shown_until = now + 2.0;
+		da_last = now;
 	}
 	if (da_error != NULL && now > da_error_until)
 		da_error = NULL;
-	if (da_error != NULL && da_shown_until < da_error_until)
+	if (da_error != NULL && da_shown_until < da_error_until) {
 		da_shown_until = da_error_until;
+		da_last = now;
+	}
 	if (now > da_shown_until)
-		return;
-	snprintf(text, sizeof text, "D%u T%02u H%u S%02u%s%s", da_drive.drive,
+		return 0;
+	snprintf(text, size, "D%u T%02u H%u S%02u%s%s", da_drive.drive,
 	         da_drive.cylinder, da_drive.head, (unsigned) fdc->sector_register,
 	         da_error ? " " : "", da_error ? da_error : "");
-	osd_draw_disk_status(fb_pixels, fb_pitch_px, vp_w, shown_height(), text,
-	                     now <= da_lit_until, da_error != NULL);
+	*lit = now <= da_lit_until;
+	*error = da_error != NULL;
+	return 1;
+}
+
+static void draw_disk_activity(void)
+{
+	double now, last;
+	char text[40], other[40];
+	int lit = 0, error = 0, other_lit, other_error, shown;
+	if (!da_enabled)
+		return;
+	now = host_time();
+	shown = floppy_line(now, text, sizeof text, &lit, &error);
+	if (activity_line(now, other, sizeof other, &other_lit, &other_error, &last)
+	    && (!shown || last > da_last)) {
+		memcpy(text, other, sizeof text);
+		lit = other_lit;
+		error = other_error;
+		shown = 1;
+	}
+	if (shown)
+		osd_draw_disk_status(fb_pixels, fb_pitch_px, vp_w, shown_height(), text,
+		                     lit, error);
 }
 
 static void bm_draw(void *sptr)
@@ -523,6 +550,7 @@ int bmcoco_vsync_locked(void)
 void bmcoco_video_settings_changed(void)
 {
 	da_enabled = host_option_int("disk_activity", 1) != 0;
+	activity_set_enabled(da_enabled);
 	update_sync_mode();
 	apply_view();
 }
@@ -1367,6 +1395,7 @@ void bmcoco_main(void)
 		}
 
 		xroar_run(EVENT_MS(10));
+		cartbus_frame();
 		bmcoco_rs232_frame();
 		bmcoco_hires_frame();
 		pace();

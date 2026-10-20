@@ -1,5 +1,15 @@
 ## Unreleased
 
+- Hard disk and DriveWire activity, shown at the bottom left as the floppy
+  disk's is (*Show Disk Activity*): `HD0 LSN 1234` for the IDE interface
+  and the NX32's and MOOH's SD card, `DW0 LSN 1234` for DriveWire (the
+  built-in server or another computer's), with the light on while a
+  sector is read or written, and errors in red (`error`; DriveWire's `no
+  disk`, `write protected`, ...). Whichever was busy last is shown
+- Fixed: the built-in DriveWire server's virtual channels started with
+  connection 0 as theirs rather than none, so a reset of the CoCo, or
+  NitrOS-9 opening a channel, closed connection 0, whatever had it
+  (another channel's call, or the RS-232 Pak's)
 - Hi-Res Mouse (USB) in the Joysticks page (`hjoy0`): the USB mouse
   through Tandy's Hi-Res Joystick Interface, 640 positions across for
   software that reads it. Timed for the HIRESMS reader (X 0-616, Y 0-182);

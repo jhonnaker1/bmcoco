@@ -11,10 +11,10 @@
  * nothing behind it), and its list of cartridges can't be added to from
  * outside. But XRoar shows a cartridge every bus cycle, whatever the
  * address, so the Pak goes in beside the cartridge plugged in, like a
- * Y-cable or a Multi-Pak with both: this takes over the cartridge's read()
- * and write() and answers at $FF68-$FF6B, passing the rest on. So there
- * must be a cartridge (Disk BASIC's controller usually is; with none, the
- * Pak isn't there). The rs232 option (Cartridge, RS-232 Pak) turns it on.
+ * Y-cable or a Multi-Pak with both: cartbus.c takes over the cartridge's
+ * read() and write(), and the Pak answers at $FF68-$FF6B. So there must be
+ * a cartridge (Disk BASIC's controller usually is; with none, the Pak
+ * isn't there). The rs232 option (Cartridge, RS-232 Pak) turns it on.
  *
  * The 6551, as far as programs see it:
  *  - $FF68 data: the byte received (reading it empties the receiver), and
@@ -86,12 +86,6 @@ enum { OFFLINE, ONLINE };   /* the modem: taking commands, or the call's */
 static struct {
 	int enabled;
 
-	/* The cartridge it is beside, and that cartridge's own. */
-	struct cart *cart;
-	uint8_t (*cart_read)(struct cart *, uint16_t, bool, bool, uint8_t);
-	uint8_t (*cart_write)(struct cart *, uint16_t, bool, bool, uint8_t);
-	void (*cart_reset)(struct cart *, bool);
-
 	/* The 6551 */
 	uint8_t command, control, rx_data;
 	int rx_full;
@@ -154,9 +148,9 @@ static void update_irq(void)
 	if (irq)
 		rs.irq_flag = 1;
 	irq = irq && rs.irq_flag;
-	if (irq != rs.irq_line && rs.cart != NULL) {
+	if (irq != rs.irq_line && cartbus_cart() != NULL) {
 		rs.irq_line = irq;
-		DELEGATE_SAFE_CALL(rs.cart->signal_firq, irq);
+		DELEGATE_SAFE_CALL(cartbus_cart()->signal_firq, irq);
 	}
 }
 
@@ -237,67 +231,29 @@ static void acia_write(unsigned reg, uint8_t D)
 	}
 }
 
-/* ---- The cartridge's bus, with the Pak beside it -------------------------- */
+/* ---- The cartridge's bus, with the Pak beside it (cartbus.c) ------------- */
 
-static uint8_t pak_read(struct cart *c, uint16_t A, bool P2, bool R2, uint8_t D)
+uint8_t bmcoco_rs232_bus_read(uint16_t A, bool P2, bool R2, uint8_t D)
 {
-	if (rs.cart_read != NULL)
-		D = rs.cart_read(c, A, P2, R2, D);
-	if (!P2 && !R2 && (A & 0xfffc) == 0xff68)
+	if (rs.enabled && !P2 && !R2 && (A & 0xfffc) == 0xff68)
 		D = acia_read(A & 3, D);
 	return D;
 }
 
-static uint8_t pak_write(struct cart *c, uint16_t A, bool P2, bool R2, uint8_t D)
+void bmcoco_rs232_bus_write(uint16_t A, bool P2, bool R2, uint8_t D)
 {
-	if (rs.cart_write != NULL)
-		D = rs.cart_write(c, A, P2, R2, D);
-	if (!P2 && !R2 && (A & 0xfffc) == 0xff68)
+	if (rs.enabled && !P2 && !R2 && (A & 0xfffc) == 0xff68)
 		acia_write(A & 3, D);
-	return D;
 }
 
-static void pak_reset(struct cart *c, bool hard)
+void bmcoco_rs232_bus_reset(void)
 {
-	if (rs.cart_reset != NULL)
-		rs.cart_reset(c, hard);
 	acia_reset();
 }
 
-/* Puts the Pak beside the cartridge plugged in (again, if it changed). */
-static void attach(void)
+void bmcoco_rs232_bus_changed(void)
 {
-	struct cart *c = NULL;
-	if (xroar.machine != NULL)
-		c = xroar.machine->get_interface(xroar.machine, "cart");
-	if (c != NULL && c == rs.cart && c->read == pak_read)
-		return;
-	rs.cart = c;
-	rs.irq_line = 0;
-	if (c == NULL)
-		return;
-	rs.cart_read = c->read;
-	rs.cart_write = c->write;
-	rs.cart_reset = c->reset;
-	c->read = pak_read;
-	c->write = pak_write;
-	c->reset = pak_reset;
-}
-
-/* Gives the cartridge its own functions back. */
-static void detach(void)
-{
-	struct cart *c = NULL;
-	if (xroar.machine != NULL)
-		c = xroar.machine->get_interface(xroar.machine, "cart");
-	if (c != NULL && c == rs.cart && c->read == pak_read) {
-		c->read = rs.cart_read;
-		c->write = rs.cart_write;
-		c->reset = rs.cart_reset;
-		if (rs.irq_line)
-			DELEGATE_SAFE_CALL(c->signal_firq, 0);
-	}
-	rs.cart = NULL;
+	/* Beside another cartridge, or none: its CART line isn't ours. */
 	rs.irq_line = 0;
 }
 
@@ -517,7 +473,9 @@ void bmcoco_rs232_settings_changed(void)
 	rs.enabled = host_option_int("rs232", 0) != 0;
 	if (!rs.enabled) {
 		hang_up();
-		detach();
+		if (rs.irq_line && cartbus_cart() != NULL)
+			DELEGATE_SAFE_CALL(cartbus_cart()->signal_firq, 0);
+		rs.irq_line = 0;
 	}
 }
 
@@ -531,7 +489,6 @@ void bmcoco_rs232_frame(void)
 	double now;
 	if (!rs.enabled)
 		return;
-	attach();
 	dial_poll();
 	now = host_time();
 	if (rs.mode == ONLINE && rs.plus >= 3 && now - rs.plus_time >= GUARD_SECONDS) {
