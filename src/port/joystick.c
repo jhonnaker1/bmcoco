@@ -231,12 +231,16 @@ static struct joystick_submodule bmcoco_js_mouse = {
 	.configure_button = configure_mouse_button,
 };
 
+/* XRoar's keyboard joysticks (kjoy0, the menu's Arrow keys) are read by
+   its own submodule, which its desktop versions list with their own. */
+extern struct joystick_submodule hkbd_js_keyboard;
+
 static struct joystick_submodule *bmcoco_js_submodules[] = {
-	&bmcoco_js_physical, &bmcoco_js_mouse, NULL
+	&bmcoco_js_physical, &bmcoco_js_mouse, &hkbd_js_keyboard, NULL
 };
 
 struct joystick_module bmcoco_js_mod = {
-	.common = { .name = "bmcoco", .description = "Gamepads, GPIO joysticks and the mouse" },
+	.common = { .name = "bmcoco", .description = "Gamepads, GPIO joysticks, the mouse and the keyboard" },
 	.submodule_list = bmcoco_js_submodules,
 };
 

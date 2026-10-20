@@ -175,6 +175,15 @@ same joy dpad gpio
 differ joy centre fire
 same joy centre centre2
 
+# The Arrow keys joystick (kjoy0): left arrow reads as the stick full left,
+# and left Alt fires.
+run kjoy 60 "$TESTROMS" "joy_right=kjoy0" '140 shot centre.ppm\n150 key 0x50 1\n170 shot left.ppm\n171 key 0x50 0\n180 key 0xe2 1\n200 shot fire.ppm\n201 key 0xe2 0\n220 shot centre2.ppm\n221 quit\n'
+check_log kjoy "port 0 = Keyboard" "the arrow keys are plugged in"
+cp "$OUT/joy/stick.ppm" "$OUT/kjoy/stick.ppm" 2>/dev/null
+same kjoy left stick
+differ kjoy centre fire
+same kjoy centre centre2
+
 echo "Menu"
 run menu 60 "$TESTROMS" "" '120 shot before.ppm\n130 key 0x45 1\n131 key 0x45 0\n150 shot menu.ppm\n160 key 0x51 1\n161 key 0x51 0\n170 key 0x28 1\n171 key 0x28 0\n190 shot browse.ppm\n200 key 0x45 1\n201 key 0x45 0\n230 shot after.ppm\n231 quit\n'
 has_colour menu menu 255 129 0 "the menu shows its selection bar"

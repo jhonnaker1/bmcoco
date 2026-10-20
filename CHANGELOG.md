@@ -1,3 +1,9 @@
+## Unreleased
+
+- Fixed: the *Arrow keys* joystick (Joysticks page, `joy_right=kjoy0`) did
+  nothing; the port it was given was left with no joystick at all. The
+  arrow keys now move it and left Alt fires
+
 ## 0.5.4 – 2026-10-19
 
 - NitrOS-9 on the network with the built-in DriveWire server: its virtual
