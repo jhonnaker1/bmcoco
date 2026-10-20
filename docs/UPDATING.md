@@ -11,9 +11,16 @@ unmodified; everything specific to BMCoco is in `src/port/`:
 | `src/port/xroar.mk` | The list of XRoar source files to compile |
 | `src/port/config.h` | XRoar's build options (normally made by configure) |
 | `src/port/platform.c` | The user interface, video and sound modules |
-| `src/port/joystick.c` | The joystick module ("physical" joysticks) |
+| `src/port/joystick.c` | The joystick module ("physical" joysticks, the mouse, the keyboard's) |
 | `src/port/menu.c` | The menu, which talks to XRoar through its UI messages |
-| `src/port/becker_stub.c`, `posix_extra.c` | Stand-ins for what doesn't build on newlib |
+| `src/port/becker.c` | XRoar's Becker port (`becker.h`), in place of XRoar's `becker.c` |
+| `src/port/posix_extra.c`, `fswrap.c` | Stand-ins for what newlib and FatFs lack |
+
+The rest of `src/port/` (the built-in DriveWire server, the RS-232 Pak, the
+Hi-Res Mouse, the activity light) reaches into XRoar's parts from outside,
+through their public structures (`cart.h`, `mc6821.h`, `wd279x.h`,
+`joystick.h`), and wraps their functions and delegates. When XRoar changes
+those, check them: see the list in [BUILDING.md](BUILDING.md#layout).
 
 To move to a new release:
 

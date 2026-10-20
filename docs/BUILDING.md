@@ -175,6 +175,9 @@ with `tools/gen_webui_assets.py` whenever an asset changes.
 | `src/port/dwserver.c`        | The built-in DriveWire server               |
 | `src/port/activity.c`        | Hard disk and DriveWire activity, shown with the floppy's: seen on the cartridge bus and in the Becker port |
 | `src/port/cartbus.c`         | The RS-232 Pak and the activity light beside the cartridge plugged in (one wrapper round its read and write) |
+| `src/port/rs232.c`           | The RS-232 Pak (a 6551 at `$FF68`) with its virtual Hayes modem |
+| `src/port/netcall.c`         | Outgoing TCP calls made in the background, and telnet, for the modem and DriveWire's virtual channels |
+| `src/port/fswrap.c`          | `stat()` of the SD card's root, which FatFs can't do (`--wrap=stat`) |
 | `src/port/config.h`          | XRoar's build configuration                 |
 | `src/port/xroar.mk`          | Which XRoar sources are built               |
 | `src/patches/`               | Changes applied to Circle by `make_all.sh`  |

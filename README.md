@@ -27,8 +27,11 @@ available; see the [third-party](docs/THIRD_PARTY.md) acknowledgements.
 - Hard disk images on an IDE interface, and a built-in DriveWire server for
   the Becker port (NitrOS-9's DriveWire builds run with no other computer,
   and reach the network through its virtual channels, `/N`)
+- A disk light at the bottom of the screen, with the drive and sector being
+  read (floppy, hard disk or DriveWire), and errors in red
 - USB keyboards; USB gamepads as the CoCo's analog joysticks (an analog stick
-  gives the full 0-63 range); real joysticks wired to the GPIO header
+  gives the full 0-63 range); a USB mouse as the CoCo's mouse, or through
+  Tandy's Hi-Res Joystick Interface; real joysticks wired to the GPIO header
 - No shutdown needed: just switch it off (changed disks are written back
   within a few seconds)
 - A menu (F12) for everything: programs, disks, tapes, cartridges, machine,

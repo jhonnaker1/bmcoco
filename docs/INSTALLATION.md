@@ -79,7 +79,8 @@ changed: `config.txt` and `cmdline.txt` if you edited them. Your settings
 (`bmcoco.cfg`, `xroar.conf`, `wpa_supplicant.conf`), ROMs and CoCo
 files are not in the release zip and stay as they are.
 
-With networking on, a new kernel (`kernel8-32.img` for a Pi 3 or Zero 2 W,
-`kernel7.img` for a Pi 2, `kernel.img` for a Pi Zero or Zero W) can also be uploaded in the web UI's file manager
-and started with **Reboot**. Updates that change other files (the Pi
+With networking on, a new kernel (`kernel_2712.img` for a Pi 5 or 500,
+`kernel8-rpi4.img` for a Pi 4 or 400, `kernel8-32.img` for a Pi 3 or Zero
+2 W, `kernel7.img` for a Pi 2, `kernel.img` for a Pi Zero or Zero W) can
+also be uploaded in the web UI's file manager and started with **Reboot**. Updates that change other files (the Pi
 firmware in the root or in `firmware/`) need the card in a computer.

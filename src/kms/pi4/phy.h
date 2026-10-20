@@ -13,8 +13,8 @@
 // the Raspberry Pi. See LICENSE for licensing details.
 //
 
-#ifndef BMA800XL_KMS_PI4_PHY_H_
-#define BMA800XL_KMS_PI4_PHY_H_
+#ifndef BMCOCO_KMS_PI4_PHY_H_
+#define BMCOCO_KMS_PI4_PHY_H_
 
 #include <stdint.h>
 
