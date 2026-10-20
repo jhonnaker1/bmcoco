@@ -204,6 +204,7 @@ static void physical_init(void)
 			jc->button_specs[i] = xstrdup(text);
 		}
 	}
+	bmcoco_hires_define();
 }
 
 static struct joystick_submodule bmcoco_js_physical = {
@@ -236,7 +237,7 @@ static struct joystick_submodule bmcoco_js_mouse = {
 extern struct joystick_submodule hkbd_js_keyboard;
 
 static struct joystick_submodule *bmcoco_js_submodules[] = {
-	&bmcoco_js_physical, &bmcoco_js_mouse, &hkbd_js_keyboard, NULL
+	&bmcoco_js_physical, &bmcoco_js_mouse, &bmcoco_js_hires, &hkbd_js_keyboard, NULL
 };
 
 struct joystick_module bmcoco_js_mod = {

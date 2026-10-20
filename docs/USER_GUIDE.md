@@ -133,6 +133,19 @@ a pointer over the picture, as the CoCo's own mouse does (OS-9's Multi-Vue,
 paint programs, CoCo 3 games), with the left button as fire and the right
 as the second button. `mouse_speed` (percent) changes how far it moves.
 
+**A Hi-Res Mouse**: give a port **Hi-Res Mouse (USB)** (or
+`joy_right=hjoy0`) for the USB mouse through Tandy's Hi-Res Joystick
+Interface (26-3028), which gives 640 positions across instead of the
+joystick's 64. Software has to read the interface itself; others see a
+joystick stuck at one side, as with the real interface. The interface is
+timed: the program drops the DAC ($FF20) from $FF to a low value and counts
+until the comparator ($FF00 bit 7) goes to 1. Across the screen that takes
+629 to 5792 microseconds for X and 1257 to 4307 for Y, the range of the
+HIRESMS reader (X 0-616 at double speed, Y 0-182 at normal speed). Programs
+written for other timing can be matched with `hires_mouse_x` and
+`hires_mouse_y` (microseconds for the left/top and right/bottom edges):
+OS-9's driver reads 0 to 639 with `1133,5423` on both.
+
 **Joysticks on the GPIO header**: set `gpio_joysticks=1` in `cmdline.txt`
 (or in the menu, then reboot). The wiring is BMC64's "GPIO Config 1". The
 pins are active low (each switch connects the pin to ground) and BMCoco
@@ -390,9 +403,10 @@ web UI.
 | `audio_buffer_ms`   | 20 to 500                    | `60`     | Sound buffer; raise it if the sound breaks up |
 | `keyboard`          | `us`, `gb`, `de`, `fr`, ... (XRoar's `-kbd-lang`) | `us` | PC keyboard layout |
 | `typed_keys`        | `0`, `1`                     | `1`      | Keys type the characters printed on them (see Keyboard) |
-| `joy_right`, `joy_left` | `joy0`, `joy1`, `kjoy0` (arrow keys), `mjoy0` (mouse) | `joy0`, `joy1` | What is plugged into each joystick port |
+| `joy_right`, `joy_left` | `joy0`, `joy1`, `kjoy0` (arrow keys), `mjoy0` (mouse), `hjoy0` (Hi-Res Mouse) | `joy0`, `joy1` | What is plugged into each joystick port |
 | `joy1_pad`, `joy2_pad` | `0` automatic, `1`-`4` a gamepad, `-1` none | `0` | Gamepad for Joystick 1 and 2 |
 | `mouse_speed`       | percent                      | `100`    | How far the mouse moves the pointer (see Joysticks) |
+| `hires_mouse_x`, `hires_mouse_y` | start,end (microseconds) | `629,5792`, `1257,4307` | The Hi-Res Mouse's timing for each axis (see Joysticks) |
 | `ram_NAME`          | K, e.g. `ram_coco3=2048`     | machine's | The RAM of machine NAME (the menu's *Memory*) |
 | `hd0`, `hd1`, `hd_cart` | paths, a cartridge name  | none     | Hard disk images and their cartridge (the menu's *Hard Disks*) |
 | `rs232`             | `0`, `1`                     | `0`      | The RS-232 Pak with a virtual modem, beside the cartridge (Cartridge, RS-232 Pak) |

@@ -171,6 +171,7 @@ with `tools/gen_webui_assets.py` whenever an asset changes.
 | `src/port/menu.c`, `osd.c`   | The menu and its on-screen display          |
 | `src/port/posix_extra.c`     | regcomp(), basename(), access() for newlib  |
 | `src/port/becker.c`          | XRoar's Becker port (DriveWire over TCP, connecting in the background), or the built-in server |
+| `src/port/hires.c`           | The Tandy Hi-Res Joystick Interface with the USB mouse (`hjoy0`), timed from the DAC's writes |
 | `src/port/dwserver.c`        | The built-in DriveWire server               |
 | `src/port/config.h`          | XRoar's build configuration                 |
 | `src/port/xroar.mk`          | Which XRoar sources are built               |

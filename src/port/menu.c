@@ -745,6 +745,8 @@ static const char *joystick_name(int id)
 		return "Arrow keys";
 	if (strcmp(jc->name, "mjoy0") == 0)
 		return "Mouse";
+	if (strcmp(jc->name, "hjoy0") == 0)
+		return "Hi-Res Mouse";
 	return jc->description ? jc->description : jc->name;
 }
 
@@ -760,9 +762,10 @@ static void set_port(int port, const char *name)
 
 static void choose_port(int port)
 {
-	static const char *const names[] = {"joy0", "joy1", "kjoy0", "mjoy0", NULL};
+	static const char *const names[] = {"joy0", "joy1", "kjoy0", "mjoy0", "hjoy0", NULL};
 	static const char *const choices[] = {
-		"Joystick 1", "Joystick 2", "Arrow keys + Alt (fire)", "Mouse (USB)", NULL
+		"Joystick 1", "Joystick 2", "Arrow keys + Alt (fire)", "Mouse (USB)",
+		"Hi-Res Mouse (USB)", NULL
 	};
 	struct joystick_config *jc = joystick_config_by_id(state.joystick_id[port]);
 	int current = 0, i;

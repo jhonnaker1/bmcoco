@@ -19,6 +19,8 @@
  *   <frame> audio                  print audio statistics
  *   <frame> webui <reboot|coldstart>  a request from the web UI
  *   <frame> run <path>             the web UI starts a file
+ *   <frame> peek <mark> <count>    print COUNT bytes of the CoCo's RAM after
+ *                                  the 4 characters MARK
  *   <frame> quit                   end the test
  *
  * BMCOCO_SIM_FRAME_MS=N makes each frame's emulation take N ms of the
@@ -54,6 +56,11 @@
 #include <sys/socket.h>
 
 #include "../../src/host.h"
+#include "top-config.h"
+#include "machine.h"
+#include "part.h"
+#include "ram.h"
+#include "xroar.h"
 #include "live.h"
 
 /* From src/port/platform.c, called by the web UI on the Pi. */
@@ -593,6 +600,29 @@ static void run_script(void)
 			        frame, snd_written, snd_writes, snd_min_fill, snd_max_fill, snd_underruns,
 			        snd_nonzero);
 			fprintf(stderr, "[sim] frame %ld: %ld frames presented\n", frame, presents);
+		} else if (strcmp(cmd, "peek") == 0) {
+			/* Reads the RAM itself, not through the machine's bus,
+			   which would disturb an instruction half done: finds
+			   the 4 byte MARKER and prints the COUNT bytes after it. */
+			char marker[8] = "";
+			unsigned count = 1, i;
+			struct ram *ram = NULL;
+			const uint8_t *found = NULL;
+			sscanf(line + n, "%7s %u", marker, &count);
+			if (xroar.machine)
+				ram = (struct ram *) part_component_by_id(&xroar.machine->part, "RAM");
+			for (unsigned b = 0; ram && !found && b < ram->nbanks; b++) {
+				const uint8_t *d = ram->d[b];
+				for (size_t k = 0; d && k + 4 + count <= ram->bank_nelems; k++)
+					if (memcmp(d + k, marker, 4) == 0) {
+						found = d + k + 4;
+						break;
+					}
+			}
+			fprintf(stderr, "[sim] frame %ld: peek %s:", frame, marker);
+			for (i = 0; found && i < count; i++)
+				fprintf(stderr, " %02x", found[i]);
+			fprintf(stderr, "%s\n", found ? "" : " not found");
 		} else if (strcmp(cmd, "quit") == 0) {
 			fprintf(stderr, "[sim] %ld yields between frames\n", yields);
 			fprintf(stderr, "[sim] quit at frame %ld (%.2f s)\n", frame, now);

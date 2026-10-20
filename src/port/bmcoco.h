@@ -77,6 +77,13 @@ void bmcoco_pad_keys(void);
 /* Which gamepad (0-3, -1 none) feeds joystick N (0 or 1). */
 int bmcoco_joystick_pad(int n);
 void bmcoco_joystick_settings_changed(void);
+/* hires.c: the Tandy Hi-Res Joystick Interface with the USB mouse
+   ("hjoy0"). */
+struct joystick_submodule;
+extern struct joystick_submodule bmcoco_js_hires;
+void bmcoco_hires_define(void);
+/* Watches the DAC for the Hi-Res Mouse, once a frame. */
+void bmcoco_hires_frame(void);
 
 /* The RS-232 Pak with its virtual modem (rs232.c): the rs232 option read
    again, and its work once a frame. */

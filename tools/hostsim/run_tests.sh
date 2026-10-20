@@ -282,6 +282,61 @@ differ mouse tl br
 differ mouse br fire
 same mouse tl tl2
 
+echo "Hi-Res Mouse"
+# A stand-in CoCo 3 ROM (make_hires_test.py) reads the right port through
+# the Hi-Res Joystick Interface with OS-9's JoyDrv routine (0-639) and with
+# HIRESMS (Y 0-182 at 0.89 MHz, X 0-616 at 1.79 MHz), over and over.
+mkdir -p "$OUT/hiresroms"
+python3 "$HERE/make_hires_test.py" "$OUT/hiresroms" > /dev/null || exit 1
+# hires NAME CMDLINE: the pointer to the top left, then down and right in
+# steps, then to the bottom right; prints "OS9Y OS9X HRY HRX" for each.
+hires() {
+    local script='100 mouse -4000 -4000 0\n' f=100 i
+    for i in $(seq 1 30); do
+        f=$((f + 10))
+        script="$script$f peek HIRS 8\n$((f + 1)) mouse 22 14 0\n"
+    done
+    script="$script$((f + 10)) mouse 8000 8000 0\n$((f + 40)) peek HIRS 8\n$((f + 41)) quit\n"
+    run "$1" 60 "$OUT/hiresroms" "joy_right=hjoy0 $2" "$script"
+    grep "peek HIRS" "$OUT/$1/log.txt" | python3 -c '
+import sys
+for l in sys.stdin:
+    b = [int(x, 16) for x in l.split(":")[2].split()]
+    print(b[0] * 256 + b[1], b[2] * 256 + b[3], b[4], b[6] * 256 + b[7])' > "$OUT/$1/readings.txt"
+}
+# check_hires NAME FIRST LAST: the first and last readings, and every axis
+# never going down in between.
+check_hires() {
+    local first last
+    first=$(head -1 "$OUT/$1/readings.txt")
+    last=$(tail -1 "$OUT/$1/readings.txt")
+    [ "$first" = "$2" ] && pass "$1: top left reads $2" || fail "$1" "top left: '$first', not '$2'"
+    [ "$last" = "$3" ] && pass "$1: bottom right reads $3" || fail "$1" "bottom right: '$last', not '$3'"
+    if python3 - "$OUT/$1/readings.txt" <<'PY'
+import sys
+rows = [list(map(int, l.split())) for l in open(sys.argv[1])]
+sys.exit(0 if len(rows) > 20 and all(b[k] >= a[k] for a, b in zip(rows, rows[1:]) for k in range(4)) else 1)
+PY
+    then
+        pass "$1: the readings follow the pointer across"
+    else
+        fail "$1" "readings went down (see out/$1/readings.txt)"
+    fi
+}
+hires hires ""
+check_log hires "port 0 = Hi-Res Mouse" "Hi-Res Mouse plugged into the right port"
+# The default timing is HIRESMS's: X 0-616, Y 0-182 across the screen.
+check_hires hires "19 0 0 0" "472 639 182 616"
+# OS-9's timing instead: 0-639 on both axes.
+hires hires_timed "hires_mouse_x=1133,5423 hires_mouse_y=1133,5423"
+check_hires hires_timed "0 0 0 60" "639 639 182 572"
+# The buttons: the mouse's left is the CoCo's button 1 ($FF00 bit 0), its
+# right the CoCo 3's second button (bit 2).
+run hires_buttons 60 "$OUT/hiresroms" "joy_right=hjoy0" '100 mouse 0 0 0\n130 peek HIRS 10\n131 mouse 0 0 1\n160 peek HIRS 10\n161 mouse 0 0 2\n190 peek HIRS 10\n191 mouse 0 0 4\n220 peek HIRS 10\n221 quit\n'
+buttons=$(grep "peek HIRS" "$OUT/hires_buttons/log.txt" | awk '{print $NF}' | tr '\n' ' ')
+[ "$buttons" = "00 01 04 00 " ] && pass "hires_buttons: none, left = button 1, right = button 2, middle = none" \
+    || fail "hires_buttons" "buttons read '$buttons', not '00 01 04 00 '"
+
 echo "DriveWire drives"
 # Menu, down three to DriveWire, down one to Drive 0, the disks folder, the
 # image: it is drive 0 of the built-in server, kept in bmcoco.cfg.

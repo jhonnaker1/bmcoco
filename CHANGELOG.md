@@ -1,5 +1,14 @@
 ## Unreleased
 
+- Hi-Res Mouse (USB) in the Joysticks page (`hjoy0`): the USB mouse
+  through Tandy's Hi-Res Joystick Interface, 640 positions across for
+  software that reads it. Timed for the HIRESMS reader (X 0-616, Y 0-182);
+  `hires_mouse_x` and `hires_mouse_y` in `cmdline.txt` change the timing
+  for other programs (OS-9's driver: `1133,5423` on both)
+- Fix the mouse's right button: it is the CoCo 3's second button, as the
+  User Guide says, but the middle button (the wheel) was. XRoar numbers
+  the buttons left, middle, right; BMCoco gave it the USB order (left,
+  right, middle). Both the Mouse and the Hi-Res Mouse
 - Fixed: the *Arrow keys* joystick (Joysticks page, `joy_right=kjoy0`) did
   nothing; the port it was given was left with no joystick at all. The
   arrow keys now move it and left Alt fires

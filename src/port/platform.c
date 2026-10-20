@@ -1087,9 +1087,11 @@ static void process_mouse(void)
 		mouse_y = shown_height() - 1;
 	bm_vo->mouse.axis[0] = (int) mouse_x;
 	bm_vo->mouse.axis[1] = (int) mouse_y;
+	/* XRoar numbers the buttons as SDL does, left, middle, right, and
+	   gives the CoCo's second button the right one (button[2]). */
 	bm_vo->mouse.button[0] = (buttons & 1) != 0;
-	bm_vo->mouse.button[1] = (buttons & 2) != 0;
-	bm_vo->mouse.button[2] = (buttons & 4) != 0;
+	bm_vo->mouse.button[1] = (buttons & 4) != 0;
+	bm_vo->mouse.button[2] = (buttons & 2) != 0;
 }
 
 static void process_input(void)
@@ -1366,6 +1368,7 @@ void bmcoco_main(void)
 
 		xroar_run(EVENT_MS(10));
 		bmcoco_rs232_frame();
+		bmcoco_hires_frame();
 		pace();
 
 		now = host_time();
