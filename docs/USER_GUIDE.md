@@ -69,7 +69,7 @@ next item starting with it.
 | Keyboard       | Typed characters on or off, and the PC keyboard's layout |
 | Sound          | Volume, and HDMI or the headphone jack |
 | Network        | Ethernet or Wi-Fi, and the web UI (see below) |
-| Turbo          | Run as fast as the Pi can (also F11) |
+| Rate Limit     | The CoCo's own speed; off, as fast as the Pi can (also F11; XRoar's Shift+F12) |
 | Reset, Hard Reset | The reset button (F10), or power off and on (Shift+F10) |
 | About          | Versions, the machine, ROM status, display, load and network |
 | Reboot, Shut Down | Restart BMCoco, or halt the Pi. Shut Down also from a keyboard's power key (Fn+F10 on a Pi 400, which switches off; Fn+F10 starts it again) or the Pi 5's power button |
@@ -82,7 +82,7 @@ boot.
 | PC key                 | CoCo                                          |
 |------------------------|-----------------------------------------------|
 | F12                    | BMCoco menu                                   |
-| F11                    | Turbo on/off: no rate limit (XRoar's Shift+F12) |
+| F11                    | Rate limit off/on (XRoar's Shift+F12)         |
 | F10, Shift+F10         | Reset, hard reset                             |
 | Esc                    | BREAK                                         |
 | Home                   | CLEAR                                         |

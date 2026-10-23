@@ -95,7 +95,7 @@ the [User Guide](docs/USER_GUIDE.md#display-and-timing).
 | Key                  | Does                                                 |
 |----------------------|------------------------------------------------------|
 | F12                  | Menu                                                 |
-| F11                  | Turbo on/off                                         |
+| F11                  | Rate limit off/on (as fast as the Pi can)            |
 | F10 / Shift+F10      | Reset / hard reset (power off and on)                |
 | Esc                  | BREAK                                                |
 | Home                 | CLEAR                                                |

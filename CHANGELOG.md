@@ -1,3 +1,9 @@
+## 0.5.7 – unreleased
+
+- The menu's *Turbo* is *Rate Limit (F11)*, as XRoar calls it (its
+  Shift+F12): checked, the CoCo runs at its own speed; F11 turns it off
+  and on ("Rate limit off")
+
 ## 0.5.6 – 2026-10-23
 
 - Fixed: a gamepad's X button typed Space, and Y Enter. A game that asks

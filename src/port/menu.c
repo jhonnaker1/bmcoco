@@ -1067,7 +1067,7 @@ static void keyboard_menu(void)
 			{"", NULL, OSD_ITEM_LABEL, -1},
 			{"Esc BREAK, Home CLEAR, Alt ALT,", NULL, OSD_ITEM_LABEL, -1},
 			{"Caps Lock/Windows CTRL, F1 F2.", NULL, OSD_ITEM_LABEL, -1},
-			{"F10 Reset, F11 Turbo, F12 Menu.", NULL, OSD_ITEM_LABEL, -1},
+			{"F10 Reset, F11 Rate Limit, F12 Menu.", NULL, OSD_ITEM_LABEL, -1},
 		};
 		int chosen = osd_menu("Keyboard", items, sizeof(items) / sizeof(items[0]), &sel);
 		int i;
@@ -1434,7 +1434,7 @@ void bmcoco_menu(void)
 			{"Keyboard", NULL, OSD_ITEM_SUBMENU, M_KEYBOARD},
 			{"Sound", NULL, OSD_ITEM_SUBMENU, M_SOUND},
 			{"Network", NULL, OSD_ITEM_SUBMENU, M_NETWORK},
-			{"Turbo (F11)", NULL, check(bmcoco_turbo()), M_TURBO},
+			{"Rate Limit (F11)", NULL, check(!bmcoco_turbo()), M_TURBO},
 			{"Reset (F10)", NULL, 0, M_RESET},
 			{"Hard Reset (Shift+F10)", NULL, 0, M_HARD_RESET},
 			{"About", NULL, OSD_ITEM_SUBMENU, M_ABOUT},

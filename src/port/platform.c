@@ -1101,7 +1101,8 @@ static void pace(void)
 void bmcoco_set_turbo(int on)
 {
 	turbo = on;
-	osd_notify(on ? "Turbo on" : "Turbo off");
+	/* "Rate limit", as XRoar calls it (its Shift+F12). */
+	osd_notify(on ? "Rate limit off" : "Rate limit on");
 	reset_pacing();
 }
 
