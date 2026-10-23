@@ -55,7 +55,8 @@ OBJS += src/kms/pi4/dlist.o src/kms/pi4/hvs.o src/kms/pi4/display.o \
         src/kms/pi4/phy.o src/kms/pi4/modeset.o
 else
 OBJS += src/kms/pi5/dlist.o src/kms/pi5/hvs.o src/kms/pi5/display.o \
-        src/kms/pi5/phy.o src/kms/pi5/modeset.o
+        src/kms/pi5/phy.o src/kms/pi5/modeset.o \
+        src/pi45/board.o src/pi45/fan.o
 endif
 # Smooth scaling and the CRT shader are drawn by the ARM: -O3 lets GCC turn
 # their per-pixel loops into NEON code (tools/pi4scaler tests the same).
@@ -154,7 +155,8 @@ LIBS := $(XROAR_LIB) \
 EXTRACLEAN += $(OBJS) src/*.o src/port/*.d src/*.d src/webui/*.d src/sdcard/*.d \
               src/av/*.o src/av/*.d src/kms/common/*.o src/kms/common/*.d \
               src/kms/pi4/*.o src/kms/pi4/*.d \
-              src/kms/pi5/*.o src/kms/pi5/*.d src/v3d/*.o src/v3d/*.d
+              src/kms/pi5/*.o src/kms/pi5/*.d src/v3d/*.o src/v3d/*.d \
+              src/pi45/*.o src/pi45/*.d
 .PHONY: check-submodule distclean
 
 distclean: clean

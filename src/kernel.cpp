@@ -12,6 +12,7 @@
 #include "kernel.h"
 #include "logging.h"
 #include "network.h"
+#include "pi45/board.h"
 
 #include <assert.h>
 #include <stdio.h>
@@ -20,10 +21,6 @@
 #include <circle/bcmpropertytags.h>
 #include <circle/bcmwatchdog.h>
 #include <circle/machineinfo.h>
-#include <circle/memio.h>
-#if RASPPI >= 5
-#include <circle/bcm2712.h>
-#endif
 #include <circle/startup.h>
 #include <circle/synchronize.h>
 #include <circle/usb/usbhid.h>
@@ -31,9 +28,8 @@
 
 extern "C" {
 // From src/port/platform.c: the emulator's entry point, which runs on core
-// 1, and its Reboot / Shut Down request.
+// 1.
 void bmcoco_main(void);
-void bmcoco_request_power(int power_off);
 }
 
 static const char FromKernel[] = "bmcoco";
@@ -367,7 +363,7 @@ TShutdownMode CKernel::Run(void) {
       }
     }
 #if RASPPI >= 5
-    CheckPowerButton();
+    Pi45BoardPoll();
 #endif
 
     asm volatile("wfi");
@@ -376,38 +372,6 @@ TShutdownMode CKernel::Run(void) {
   return ShutdownHalt;
 #endif
 }
-
-#if RASPPI >= 5
-// The Pi 5's power button, and the Pi 500's power key, as Shut Down: GPIO
-// 20 of the BCM2712's own GPIO block ("gio", Circle's ARM_GPIO1_BASE),
-// low while pressed, held for 50 ms (the device trees' debounce time). It
-// counts only once it has been seen released.
-// Sources: Raspberry Pi Linux device trees, bcm2712-rpi-5-b.dts
-// (pwr_button: gpio-keys, KEY_POWER, <&gio 20 GPIO_ACTIVE_LOW>,
-// debounce-interval 50, pull-up) and bcm2712-rpi-500.dts (the same key);
-// bcm2712.dtsi (gio at 0x7D508500); Circle, include/circle/bcm2712.h
-// (ARM_GPIO1_DATA0, the first bank's levels).
-void CKernel::CheckPowerButton(void) {
-  const u32 Button = 1u << 20;
-  bool down = (read32(ARM_GPIO1_DATA0) & Button) == 0;
-  unsigned now = CTimer::GetClockTicks();
-  if (!down) {
-    m_bPowerButtonSeenUp = true;
-    m_nPowerButtonDown = 0;
-    return;
-  }
-  if (!m_bPowerButtonSeenUp) {
-    return;
-  }
-  if (m_nPowerButtonDown == 0) {
-    m_nPowerButtonDown = now | 1;
-  } else if (now - m_nPowerButtonDown >= CLOCKHZ / 20) {
-    mLogger.Write(FromKernel, LogNotice, "Power button: Shut Down");
-    bmcoco_request_power(1);
-    m_bPowerButtonSeenUp = false;
-  }
-}
-#endif
 
 //
 // USB keyboards

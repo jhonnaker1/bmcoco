@@ -40,6 +40,12 @@ BMCoco includes the Raspberry Pi boot firmware (`bootcode.bin`, `start.elf`, `fi
 
 Their licences are next to them, in [`sdcard/firmware/`](../sdcard/firmware/) and on the SD card: `LICENCE.broadcom` for the firmware and `COPYING.linux` for the device trees. See the [Raspberry Pi firmware repository](https://github.com/raspberrypi/firmware/tree/master/boot) for more.
 
+The Raspberry Pi 0 to 3 firmware is from firmware release 1.20260907. The
+Raspberry Pi 4 and 5 firmware, device trees and overlay are the ones Circle
+51.1.1 uses (see its `boot/Makefile`). The device trees and overlay are
+unmodified builds of the device tree sources in the
+[Raspberry Pi kernel](https://github.com/raspberrypi/linux) (Linux 6.12).
+
 ## crt-pi
 
 BMCoco uses the crt-pi CRT shader by davej, as included in BMC64, under the GNU General Public License version 2 or later: on the ARM, and compiled for the Raspberry Pi 4 and Pi 5's 3D GPU from [`tools/v3dshader/crt.frag`](../tools/v3dshader/crt.frag). See [`sdcard/licenses/crt-pi.txt`](../sdcard/licenses/crt-pi.txt) and [`sdcard/licenses/GPL-2.0.txt`](../sdcard/licenses/GPL-2.0.txt).

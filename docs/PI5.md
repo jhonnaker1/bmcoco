@@ -41,3 +41,11 @@ runs about 24 ms later than on the Pi 4, which keeps it clean on the Pi 5.
 *Shut Down* (menu, web UI, a keyboard's power key, or a short press of the
 Pi 5's power button or the Pi 500's power key) halts the Pi; the power
 button or key starts it again.
+
+## Fan
+
+The Pi 5's own fan (the Active Cooler, or the case fan on the fan
+connector) is run by BMCoco as Raspberry Pi OS runs it: off below 50 °C,
+then faster in four steps at 50, 60, 67.5 and 75 °C, slowing again 5 °C
+below each. It runs at full speed for the first second. Without it, the
+fan would stay off. The log shows each change (`fan: 61.2 C, speed 2 of 4`).

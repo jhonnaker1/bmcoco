@@ -15,6 +15,13 @@
   default), so Glen Hewlett's Asteroids and Joust took no coin on the
   keypad's 5. The keypad's digits, `.`, `-`, `/` and Enter are now the
   main keys'
+- Pi 5: the fan is run by the SoC's temperature (off below 50 °C, faster
+  in four steps up to 75 °C), as on Raspberry Pi OS; before it stayed off
+  (from BMA800XL 1.4.3, after BMC64)
+- From BMA800XL 1.4.3: the Pi 5's power button code is in src/pi45, and
+  THIRD_PARTY.md says which firmware release the SD card's is. Its USB
+  paddles (Atari) are left out, and BMCoco already ran the ARM at its full
+  clock and drew RGB565 pictures on the GPU
 - Tests: the keypad's 5; the bit-banger's input, and the gamepad's X with and without
   `pad_keys`
 
