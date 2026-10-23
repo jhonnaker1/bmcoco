@@ -389,6 +389,36 @@ if [ -n "${BMCOCO_ROMS:-}" ]; then
     check_log coco3 "Super Extended Colour BASIC" "CoCo 3 ROM found"
     check_log coco3 "synchronised to the display" "CoCo 3 locked to 60 Hz"
 
+    echo "CoCo 3: the bit-banger's input and the gamepad's X"
+    # The program puts at 16000 a marker, the serial input (PEEK(65314)
+    # AND 1: 1 is mark, a quiet line), then waits for the right joystick's
+    # fire or a key and stores the fire bit (0 pressed) and whether a key
+    # came. X fires and types nothing; with pad_keys=1 it types Space.
+    # One line every 250 frames: longer typed lines get cut off.
+    padx_script() {
+        local f=150 l s=""
+        for l in 'POKE 16000,66' 'POKE 16001,77' 'POKE 16002,81' 'POKE 16003,90' \
+                 'POKE 16004,PEEK(65314) AND 1' '10 F=PEEK(65280) AND 1' '20 K$=INKEY$' \
+                 '30 IF F=1 AND LEN(K$)=0 THEN 10' '40 POKE 16005,F' '50 POKE 16006,LEN(K$)' \
+                 '60 GOTO 60' 'RUN'; do
+            s="$s$f type $l\\\\n\n"
+            f=$((f + 250))
+        done
+        echo "$s$((f + 60)) pad 0 0x4\n$((f + 90)) pad 0 0\n$((f + 150)) peek BMQZ 3\n$((f + 151)) quit\n"
+    }
+    run padx 60 "$BMCOCO_ROMS" "machine=coco3" "$(padx_script)"
+    run padkeys 60 "$BMCOCO_ROMS" "machine=coco3 pad_keys=1" "$(padx_script)"
+    if grep -q "peek BMQZ: 01 00 00" "$OUT/padx/log.txt"; then
+        pass "padx: the serial input idles at 1; X fires, typing nothing"
+    else
+        fail padx "expected 01 00 00 (see out/padx/log.txt)"
+    fi
+    if grep -q "peek BMQZ: 01 01 01" "$OUT/padkeys/log.txt"; then
+        pass "padkeys: with pad_keys=1, X types a key and doesn't fire"
+    else
+        fail padkeys "expected 01 01 01 (see out/padkeys/log.txt)"
+    fi
+
     echo "CoCo 3 sound on a 60 Hz display"
     # A CoCo 3 (59.69 Hz) locked to 60 Hz runs 0.5% fast: the sound must be
     # slowed to fit, never cut off with the buffer full (which clicks), and

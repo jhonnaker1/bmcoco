@@ -107,8 +107,8 @@ Keys type the characters printed on them (Shift+' types `"`); turn off
 CoCo's own layout.
 
 Gamepads are Joystick 1 and 2: the left stick or D-pad moves, **A** is the
-fire button, **B** the CoCo 3's second button, **X** types Space and **Y**
-Enter. **Home**, or **Select+Start** together, opens the menu, where the
+fire button, **B** the CoCo 3's second button (**X** and **Y** fire too;
+`pad_keys=1` has them type Space and Enter). **Home**, or **Select+Start** together, opens the menu, where the
 D-pad moves, **A** chooses and **B** goes back.
 
 See the [User Guide](docs/USER_GUIDE.md) for all the details, including the

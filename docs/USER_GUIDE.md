@@ -118,9 +118,13 @@ one). Each takes its input from:
 |-----------------|----------------------------|
 | A               | Fire                       |
 | B               | Second fire button (CoCo 3)|
-| X               | Space                      |
-| Y               | Enter                      |
+| X               | Fire (as A)                |
+| Y               | Second fire button (as B)  |
 | Home, Select+Start | BMCoco menu             |
+
+The buttons type no keys, as a CoCo joystick's don't (a game asking
+"keyboard or joystick?" would otherwise see a key). `pad_keys=1` in
+`cmdline.txt` has X type Space and Y Enter instead, as before 0.5.6.
 
 In the menu's *Joysticks* page each port can also be given **Arrow keys**:
 the arrow keys then move that joystick and left Alt fires (the arrows then
@@ -405,6 +409,7 @@ web UI.
 | `typed_keys`        | `0`, `1`                     | `1`      | Keys type the characters printed on them (see Keyboard) |
 | `joy_right`, `joy_left` | `joy0`, `joy1`, `kjoy0` (arrow keys), `mjoy0` (mouse), `hjoy0` (Hi-Res Mouse) | `joy0`, `joy1` | What is plugged into each joystick port |
 | `joy1_pad`, `joy2_pad` | `0` automatic, `1`-`4` a gamepad, `-1` none | `0` | Gamepad for Joystick 1 and 2 |
+| `pad_keys`          | `0`, `1`                     | `0`      | The gamepads' X and Y type Space and Enter rather than fire (see Joysticks) |
 | `mouse_speed`       | percent                      | `100`    | How far the mouse moves the pointer (see Joysticks) |
 | `hires_mouse_x`, `hires_mouse_y` | start,end (microseconds) | `629,5792`, `1257,4307` | The Hi-Res Mouse's timing for each axis (see Joysticks) |
 | `ram_NAME`          | K, e.g. `ram_coco3=2048`     | machine's | The RAM of machine NAME (the menu's *Memory*) |

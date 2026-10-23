@@ -48,6 +48,9 @@
    the menu changes them. -2: not looked up yet. */
 static int joystick_pad[NUM_JOYSTICKS] = {-2, -2};
 
+/* pad_keys=1: the gamepads' X and Y type Space and Enter rather than fire. */
+static int pad_keys;
+
 int bmcoco_joystick_pad(int n)
 {
 	static const char *const names[NUM_JOYSTICKS] = {"joy1_pad", "joy2_pad"};
@@ -152,9 +155,13 @@ static int read_button(void *sptr)
 {
 	struct bm_button *b = sptr;
 	int state = pad_state(b->joystick);
+	/* X and Y fire too (unless pad_keys=1 has them type keys): pads
+	   report their buttons in many orders, and a CoCo joystick's button
+	   types nothing. */
+	int x = pad_keys ? 0 : HOST_PAD_X, y = pad_keys ? 0 : HOST_PAD_Y;
 	if (b->button == 0)
-		return (state & HOST_PAD_A) || (host_gpio_joystick(b->joystick) & HOST_JOY_FIRE);
-	return (state & HOST_PAD_B) != 0;
+		return (state & (HOST_PAD_A | x)) || (host_gpio_joystick(b->joystick) & HOST_JOY_FIRE);
+	return (state & (HOST_PAD_B | y)) != 0;
 }
 
 /* Spec: "JOYSTICK,BUTTON" */
@@ -186,6 +193,7 @@ static void physical_init(void)
 		"Joystick 2 (gamepad 2, GPIO 2)",
 	};
 	int n, i;
+	pad_keys = host_option_int("pad_keys", 0) != 0;
 	for (n = 0; n < NUM_JOYSTICKS; n++) {
 		struct joystick_config *jc;
 		char text[32];
@@ -247,6 +255,7 @@ struct joystick_module bmcoco_js_mod = {
 
 /* ---- Buttons that type keys ------------------------------------------------ */
 
+/* With pad_keys=1, X types Space and Y Enter. */
 void bmcoco_pad_keys(void)
 {
 	static const struct { int button; uint8_t key; } keys[] = {
@@ -256,6 +265,8 @@ void bmcoco_pad_keys(void)
 	static int last[HOST_PADS];
 	int pad;
 	unsigned k;
+	if (!pad_keys)
+		return;
 	for (pad = 0; pad < HOST_PADS; pad++) {
 		int state = host_pad_state(pad);
 		int changed;

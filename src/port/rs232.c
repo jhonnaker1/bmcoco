@@ -62,6 +62,7 @@
 #include "delegate.h"
 #include "logging.h"
 #include "machine.h"
+#include "mc6821.h"
 #include "part.h"
 #include "xroar.h"
 
@@ -484,9 +485,26 @@ int bmcoco_rs232_enabled(void)
 	return rs.enabled;
 }
 
+/* The bit-banger's input (PIA1 PB0) idles at mark, 1, as when a cable to
+   a modem is plugged in. XRoar's CoCo 3 holds it at 0 (its CoCo 1 and 2
+   leave it at 1): to a terminal program on the bit-banger, an endless
+   start bit, so that it received bytes all the time. */
+static void bitbanger_idle(void)
+{
+	struct MC6821 *pia;
+	if (xroar.machine == NULL || xroar.machine->config == NULL
+	    || xroar.machine->config->architecture == NULL
+	    || strcmp(xroar.machine->config->architecture, "coco3") != 0)
+		return;
+	pia = (struct MC6821 *) part_component_by_id_is_a(&xroar.machine->part, "PIA1", "MC6821");
+	if (pia != NULL)
+		pia->b.in_sink |= 0x01;
+}
+
 void bmcoco_rs232_frame(void)
 {
 	double now;
+	bitbanger_idle();
 	if (!rs.enabled)
 		return;
 	dial_poll();

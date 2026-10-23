@@ -1,3 +1,19 @@
+## 0.5.6 – unreleased
+
+- Fixed: a gamepad's X button typed Space, and Y Enter. A game that asks
+  "keyboard or joystick?" with the space bar for the keyboard (Canyon
+  Climber) took the press for the keyboard when the pad's fire button was
+  X (pads report their buttons in many orders), and the CoCo's own
+  joystick button types nothing. X now fires as A does, and Y is the
+  second button as B is; `pad_keys=1` in `cmdline.txt` brings back Space
+  and Enter
+- Fixed: on a CoCo 3, a terminal program on the bit-banger (the serial
+  port) received bytes all the time with nothing connected. XRoar held
+  the port's input at 0, an endless start bit; it now idles at 1, as on a
+  quiet line (XRoar's CoCo 1 and 2 already did)
+- Tests: the bit-banger's input, and the gamepad's X with and without
+  `pad_keys`
+
 ## 0.5.5 – 2026-10-20
 
 - Hard disk and DriveWire activity, shown at the bottom left as the floppy
