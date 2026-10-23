@@ -1,4 +1,4 @@
-## 0.5.6 – unreleased
+## 0.5.6 – 2026-10-23
 
 - Fixed: a gamepad's X button typed Space, and Y Enter. A game that asks
   "keyboard or joystick?" with the space bar for the keyboard (Canyon
@@ -22,8 +22,10 @@
   THIRD_PARTY.md says which firmware release the SD card's is. Its USB
   paddles (Atari) are left out, and BMCoco already ran the ARM at its full
   clock and drew RGB565 pictures on the GPU
-- Tests: the keypad's 5; the bit-banger's input, and the gamepad's X with and without
-  `pad_keys`
+- The User Guide says what F11 (no rate limit, XRoar's Shift+F12) and F10
+  do when a game catches the reset (Shift+F10 clears the memory first)
+- Tests: the keypad's 5; the bit-banger's input, and the gamepad's X with
+  and without `pad_keys`
 
 ## 0.5.5 – 2026-10-20
 
