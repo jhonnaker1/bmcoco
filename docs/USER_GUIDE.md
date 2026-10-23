@@ -82,7 +82,7 @@ boot.
 | PC key                 | CoCo                                          |
 |------------------------|-----------------------------------------------|
 | F12                    | BMCoco menu                                   |
-| F11                    | Turbo on/off                                  |
+| F11                    | Turbo on/off: no rate limit (XRoar's Shift+F12) |
 | F10, Shift+F10         | Reset, hard reset                             |
 | Esc                    | BREAK                                         |
 | Home                   | CLEAR                                         |
@@ -93,6 +93,7 @@ boot.
 | Alt                    | CoCo 3 ALT                                    |
 | Caps Lock, Windows     | CoCo 3 CTRL                                   |
 | F1, F2                 | CoCo 3 F1, F2                                 |
+| Keypad digits, `.` `-` `/`, Enter | The same keys (the CoCo has no keypad) |
 
 By default keys type the characters printed on them, in the layout set with
 `keyboard=` in `cmdline.txt` (or *Keyboard* in the menu): Shift+' types `"`
@@ -100,6 +101,10 @@ and Shift+8 `*`, as you would expect. Some games read the keyboard matrix
 directly and want the keys where the CoCo had them: turn off *Typed
 Characters* in the menu, and the PC keys then sit in the CoCo's places
 (Shift+2 is `"`, the key right of 0 is `:`).
+
+F10 is the CoCo's reset button: the program in memory may catch it, as
+some games do (Shock Trooper freezes, others restart). Shift+F10 clears the
+memory first, as switching off and on does.
 
 ## Joysticks
 

@@ -11,7 +11,11 @@
   port) received bytes all the time with nothing connected. XRoar held
   the port's input at 0, an endless start bit; it now idles at 1, as on a
   quiet line (XRoar's CoCo 1 and 2 already did)
-- Tests: the bit-banger's input, and the gamepad's X with and without
+- Fixed: the keypad's digits typed nothing (with *Typed Characters*, the
+  default), so Glen Hewlett's Asteroids and Joust took no coin on the
+  keypad's 5. The keypad's digits, `.`, `-`, `/` and Enter are now the
+  main keys'
+- Tests: the keypad's 5; the bit-banger's input, and the gamepad's X with and without
   `pad_keys`
 
 ## 0.5.5 – 2026-10-20

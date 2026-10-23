@@ -1148,6 +1148,23 @@ static void process_mouse(void)
 	bm_vo->mouse.button[2] = (buttons & 2) != 0;
 }
 
+/* The keypad's digits, '.', '-', '/' and Enter as the main keys' (the
+   CoCo has no keypad). XRoar's typed keys mode would pass on their
+   symbols, which aren't characters, and nothing would be pressed: Glen
+   Hewlett's games take a coin on 5. */
+static int main_key(int usage)
+{
+	if (usage >= 0x59 && usage <= 0x62)
+		return usage - 0x59 + 0x1e;     /* 1-9, 0 */
+	switch (usage) {
+	case 0x54: return 0x38;                 /* / */
+	case 0x56: return 0x2d;                 /* - */
+	case USAGE_KP_ENTER: return USAGE_RETURN;
+	case 0x63: return 0x37;                 /* . */
+	default: return usage;
+	}
+}
+
 static void process_input(void)
 {
 	int usage, pressed, pad;
@@ -1188,6 +1205,7 @@ static void process_input(void)
 		   Ctrl key (the CoCo 3's is on Caps Lock and the Windows keys). */
 		if (usage < 0 || usage > 0xff || usage == USAGE_LCTRL || usage == USAGE_RCTRL)
 			continue;
+		usage = main_key(usage);
 		if (pressed)
 			hk_scan_press((uint8_t) usage);
 		else

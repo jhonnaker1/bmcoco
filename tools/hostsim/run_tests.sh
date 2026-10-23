@@ -419,6 +419,19 @@ if [ -n "${BMCOCO_ROMS:-}" ]; then
         fail padkeys "expected 01 01 01 (see out/padkeys/log.txt)"
     fi
 
+    echo "The keypad"
+    # The keypad's 5 types a 5 (typed keys would pass on a symbol that
+    # isn't a character, and nothing would be typed).
+    # Compared with a run without it (the cursor blinks).
+    run keypad 60 "$BMCOCO_ROMS" "" '210 key 0x5d 1\n216 key 0x5d 0\n260 shot after.ppm\n261 quit\n'
+    run keypad_none 60 "$BMCOCO_ROMS" "" '260 shot after.ppm\n261 quit\n'
+    if [ -f "$OUT/keypad/after.ppm" ] && [ -f "$OUT/keypad_none/after.ppm" ] \
+       && ! screens_equal "$OUT/keypad/after.ppm" "$OUT/keypad_none/after.ppm"; then
+        pass "keypad: the keypad's 5 types"
+    else
+        fail keypad "the keypad's 5 typed nothing (see out/keypad)"
+    fi
+
     echo "CoCo 3 sound on a 60 Hz display"
     # A CoCo 3 (59.69 Hz) locked to 60 Hz runs 0.5% fast: the sound must be
     # slowed to fit, never cut off with the buffer full (which clicks), and
