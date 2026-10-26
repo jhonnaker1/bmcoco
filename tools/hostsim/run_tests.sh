@@ -209,6 +209,16 @@ run menu 60 "$TESTROMS" "" '120 shot before.ppm\n130 key 0x45 1\n131 key 0x45 0\
 has_colour menu menu 255 129 0 "the menu shows its selection bar"
 differ menu menu browse
 same menu before after
+# Space ticks or clears a [ ] item: K jumps to Keyboard, Enter opens it,
+# Space clears Typed Characters (saved as typed_keys=0); on Layout, an
+# item to open, Space does nothing.
+run menuspace 60 "$TESTROMS" "" '130 key 0x45 1\n131 key 0x45 0\n140 key 0x0e 1\n141 key 0x0e 0\n150 key 0x28 1\n151 key 0x28 0\n170 key 0x2c 1\n171 key 0x2c 0\n180 key 0x51 1\n181 key 0x51 0\n190 shot layout.ppm\n200 key 0x2c 1\n201 key 0x2c 0\n220 shot still.ppm\n221 quit\n'
+if grep -q "^typed_keys=0" "$OUT/menuspace/bmcoco.cfg" 2>/dev/null; then
+    pass "menuspace: Space clears a [X] item"
+else
+    fail menuspace "Space didn't clear Typed Characters (see out/menuspace/bmcoco.cfg)"
+fi
+same menuspace layout still
 
 echo "Gamepad opens the menu"
 run padmenu 60 "$TESTROMS" "" '120 pad 0 0\n130 pad 0 0x0100\n135 pad 0 0\n150 shot menu.ppm\n151 quit\n'

@@ -6,7 +6,9 @@
   connected with nothing to use it. Both are now ended
 - The RS-232 Pak's modem hangs up at a reset (F10, Shift+F10), as a modem
   set to AT&D2 does when the reset drops the Pak's DTR
-- Tests: F10 and a change of machine end a modem call; a change of
+- In the menu, Space ticks or clears a `[ ]` item (*Rate Limit*, *Show
+  Disk Activity*, ...), as Enter does
+- Tests: Space in the menu; F10 and a change of machine end a modem call; a change of
   machine ends a NitrOS-9 channel's call
 
 ## 0.5.7 – 2026-10-26

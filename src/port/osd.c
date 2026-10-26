@@ -501,9 +501,13 @@ int osd_menu(const char *title, const struct osd_item *items, int n, int *select
 		case OSD_KEY_PGDN: step = LIST_ROWS; break;
 		case OSD_KEY_HOME: sel = -1; step = 1; break;
 		case OSD_KEY_END: sel = n; step = -1; break;
+		case ' ':
 		case OSD_KEY_ENTER:
 		case OSD_KEY_RIGHT:
 			if (key == OSD_KEY_RIGHT && !(items[sel].flags & OSD_ITEM_SUBMENU))
+				break;
+			/* Space ticks a [ ] item, as in a PC's setup screens. */
+			if (key == ' ' && !(items[sel].flags & OSD_ITEM_CHECK))
 				break;
 			if (selected != NULL)
 				*selected = sel;

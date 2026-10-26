@@ -51,8 +51,9 @@ into `roms`.
 
 **F12** (or a gamepad's **Home** button, or **Select+Start**) opens the
 menu; **Esc** goes back a page and F12 closes it. The arrow keys or D-pad
-move, **Enter** or **A** chooses. In a list, typing a letter jumps to the
-next item starting with it.
+move, **Enter** or **A** chooses; **Space** also ticks or clears a
+`[ ]` item. In a list, typing a letter jumps to the next item starting
+with it.
 
 | Item           | What it does |
 |----------------|--------------|
