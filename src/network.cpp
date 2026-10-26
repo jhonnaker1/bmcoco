@@ -402,6 +402,7 @@ namespace {
 
 struct TcpConnection {
   CSocket *socket;  // 0 when the slot is free
+  bool connecting;  // Connect() is waiting, in a background task
   u8 buffer[FRAME_BUFFER_SIZE];
   unsigned pos, length;
 };
@@ -447,7 +448,10 @@ extern "C" int host_tcp_connect(const char *host, const char *port) {
   CSocket *socket = new CSocket(s_net, IPPROTO_TCP);
   s_tcp[connection].socket = socket;
   s_tcp[connection].pos = s_tcp[connection].length = 0;
-  if (socket->Connect(address, (u16)number) < 0) {
+  s_tcp[connection].connecting = true;
+  int result = socket->Connect(address, (u16)number);
+  s_tcp[connection].connecting = false;
+  if (result < 0) {
     s_tcp[connection].socket = 0;
     delete socket;
     return -1;
@@ -495,6 +499,22 @@ extern "C" void host_tcp_close(int connection) {
     CSocket *socket = c->socket;
     c->socket = 0;
     delete socket;
+  }
+}
+
+extern "C" void host_tcp_close_all(void) {
+  // Deleting a socket only queues its FIN: Circle's network task sends it
+  // (and retransmits it if need be), on this core, while we sleep.
+  int closed = 0;
+  for (int i = 0; i < kMaxTcpConnections; i++) {
+    if (s_tcp[i].socket != 0 && !s_tcp[i].connecting) {
+      host_tcp_close(i);
+      closed++;
+    }
+  }
+  if (closed > 0) {
+    CLogger::Get()->Write(FromNetwork, LogNotice, "Closed %d connection(s)", closed);
+    host_sleep_us(300000);
   }
 }
 

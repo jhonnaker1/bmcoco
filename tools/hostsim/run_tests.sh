@@ -590,11 +590,15 @@ c.sendall(b'Z')
 data = c.recv(16)
 log.write('got back %s\n' % list(data))
 log.flush()
+data = c.recv(16)
+log.write('closed\n' if data == b'' else 'more %s\n' % list(data))
+log.flush()
 EOF
         server=$!
         sleep 1
         (cd "$OUT/$name" && printf '%s\n' '300 type 10 POKE &HFF42,65\n' '500 type 20 IF PEEK(&HFF41)=0 THEN 20\n' \
-            '800 type 30 POKE &HFF42,PEEK(&HFF42)\n' '1100 type RUN\n' '1999 audio' '2000 shot result.ppm' '2001 quit' | \
+            '800 type 30 POKE &HFF42,PEEK(&HFF42)\n' '1100 type RUN\n' '1999 audio' '2000 shot result.ppm' \
+            '2001 webui reboot' '2100 quit' | \
             BMCOCO_REFRESH=60 BMCOCO_IP=127.0.0.1 BMCOCO_SIM_CONNECT_FRAMES=$frames \
             BMCOCO_CMDLINE="root=. becker_ip=127.0.0.1 becker_port=65511" "$SIM" > log.txt 2>&1)
         wait $server 2>/dev/null
@@ -609,6 +613,9 @@ EOF
         else
             fail $name "BASIC didn't read Z (see out/$name/server.log)"
         fi
+        # The web UI's Reboot closed the connection first (on the Pi a
+        # reboot alone would leave the server holding it).
+        check_log $name "reboot requested at frame [0-9]*, 0 connection" "the connection is closed before the reboot"
         # While BASIC waited for Z, the port let the network run between
         # frames (every 0.5 ms), and the CoCo kept every frame.
         yields=$(grep "yields between frames" "$OUT/$name/log.txt" | sed 's/.*\] \([0-9]*\) yields.*/\1/')
@@ -839,6 +846,37 @@ EOF
     else
         pass "rs232_off: switched off, nothing answers at \$FF68"
     fi
+
+    echo "RS-232 Pak: a reboot during a call hangs up first"
+    # A call left open by a reboot would keep the BBS waiting.
+    mkdir -p "$OUT/rs232_reboot/roms"
+    for f in "$BMCOCO_ROMS"/*; do ln -s "$f" "$OUT/rs232_reboot/roms/" 2>/dev/null; done
+    python3 - "$OUT/rs232_reboot/server.log" <<'EOF' &
+import socket, sys
+log = open(sys.argv[1], 'w')
+s = socket.socket()
+s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+s.bind(('127.0.0.1', 65519))
+s.listen(1)
+s.settimeout(60)
+c, _ = s.accept()
+log.write('connected\n')
+log.flush()
+c.settimeout(60)
+while c.recv(256):
+    pass
+log.write('closed\n')
+log.flush()
+EOF
+    server=$!
+    sleep 1
+    (cd "$OUT/rs232_reboot" && printf '%s\n' '300 type 10 A$="ATDT127.0.0.1:65519":GOSUB 100\n' '700 type 20 GOTO 20\n' \
+        '1000 type 100 FOR I=1 TO LEN(A$):POKE 65384,ASC(MID$(A$,I,1)):NEXT:POKE 65384,13:RETURN\n' \
+        '1700 type RUN\n' '2400 webui reboot' '2500 quit' | BMCOCO_SIM_CONNECT_FRAMES=60 BMCOCO_IP=127.0.0.1 \
+        BMCOCO_CMDLINE="root=. rs232=1" "$SIM" > log.txt 2>&1)
+    wait $server 2>/dev/null
+    check_log rs232_reboot "RS-232 Pak: connected to 127.0.0.1:65519" "the call connects"
+    check_log rs232_reboot "reboot requested at frame [0-9]*, 0 connection" "the call is closed before the reboot"
 
     echo "Becker port: a port that isn't a number"
     mkdir -p "$OUT/badport/roms"

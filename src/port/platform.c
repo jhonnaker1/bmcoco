@@ -1035,6 +1035,10 @@ static void handle_requests(void)
 				vdrive_eject_disk(xroar.vdrive_interface, drive);
 		}
 		sync_files(TRUE);
+		/* Tell the servers (DriveWire, the modem's BBS, NitrOS-9's
+		   channels) the connections are over; a reboot alone would
+		   leave them waiting. */
+		host_tcp_close_all();
 		if (power_off)
 			host_power_off();
 		else

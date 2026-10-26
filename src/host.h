@@ -136,6 +136,11 @@ int host_tcp_connect(const char *host, const char *port);
 int host_tcp_recv(int connection, void *buffer, unsigned size);
 int host_tcp_send(int connection, const void *buffer, unsigned size);
 void host_tcp_close(int connection);
+/* Closes every connection (but those still being made), and waits a
+   moment for the far ends to be told: before a reboot or shut down, so
+   that a server isn't left holding a connection nobody will use (a
+   DriveWire server would for hours). */
+void host_tcp_close_all(void);
 /* A Wi-Fi network found by host_wifi_scan(). signal is in dBm. */
 struct host_wifi_ap {
 	char ssid[33];

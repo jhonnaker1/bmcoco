@@ -1,8 +1,13 @@
 ## 0.5.7 – unreleased
 
+- Fixed: Reboot and Shut Down left network connections open on the other
+  computer: a DriveWire server (pyDriveWire keeps a connection for hours),
+  the BBS the modem had called, NitrOS-9's channels. They are now closed,
+  and the far end told, before the Pi restarts or halts
 - The menu's *Turbo* is *Rate Limit (F11)*, as XRoar calls it (its
   Shift+F12): checked, the CoCo runs at its own speed; F11 turns it off
   and on ("Rate limit off")
+- Tests: a reboot closes the Becker port's connection and a modem call
 
 ## 0.5.6 – 2026-10-23
 
