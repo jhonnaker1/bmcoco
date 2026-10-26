@@ -113,6 +113,10 @@ static struct {
 	double plus_time;
 
 	struct telnet telnet;
+
+	/* cartbus_generation() when last seen: the cartridge the Pak is
+	   beside. */
+	unsigned beside;
 } rs = { .conn = -1, .echo = 1, .verbose = 1 };
 
 /* ---- The 6551 ------------------------------------------------------------ */
@@ -166,8 +170,15 @@ static void rx_load(void)
 	update_irq();
 }
 
+static void hang_up(void);
+
+/* The CoCo's reset: the chip's DTR goes off, and the modem (as one set
+   to AT&D2) hangs up. */
 static void acia_reset(void)
 {
+	if (rs.conn >= 0 || rs.dialing != NULL)
+		LOG_PRINT("RS-232 Pak: reset, hanging up\n");
+	hang_up();
 	rs.command = 0;
 	rs.control = 0;
 	rs.rx_full = 0;
@@ -181,7 +192,6 @@ static const unsigned baud_rates[16] = {
 };
 
 static void modem_from_coco(uint8_t c);
-static void hang_up(void);
 
 static uint8_t acia_read(unsigned reg, uint8_t D)
 {
@@ -507,6 +517,14 @@ void bmcoco_rs232_frame(void)
 	bitbanger_idle();
 	if (!rs.enabled)
 		return;
+	if (cartbus_generation() != rs.beside || cartbus_cart() == NULL) {
+		/* Another machine, or no cartridge (and so no Pak): the CoCo
+		   that made the call is gone. */
+		if (rs.conn >= 0 || rs.dialing != NULL)
+			LOG_PRINT("RS-232 Pak: the machine changed, hanging up\n");
+		hang_up();
+		rs.beside = cartbus_generation();
+	}
 	dial_poll();
 	now = host_time();
 	if (rs.mode == ONLINE && rs.plus >= 3 && now - rs.plus_time >= GUARD_SECONDS) {

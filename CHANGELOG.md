@@ -1,3 +1,14 @@
+## 0.5.8 – unreleased
+
+- Fixed: changing the machine (a CoCo 3 to a CoCo 2, say) left NitrOS-9's
+  network channels on the built-in DriveWire server connected when the new
+  machine had no Becker port, and a modem call on the RS-232 Pak
+  connected with nothing to use it. Both are now ended
+- The RS-232 Pak's modem hangs up at a reset (F10, Shift+F10), as a modem
+  set to AT&D2 does when the reset drops the Pak's DTR
+- Tests: F10 and a change of machine end a modem call; a change of
+  machine ends a NitrOS-9 channel's call
+
 ## 0.5.7 – 2026-10-26
 
 - Fixed: Reboot and Shut Down left network connections open on the other

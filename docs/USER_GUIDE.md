@@ -317,7 +317,8 @@ online, `ATZ` to reset the modem, `ATE0` / `ATE1` echo off and on, `ATV0` /
 `ATV1` number or word replies, `ATQ1` no replies, `ATI` what it is. The
 settings terminal programs set modems up with (`AT&F`, `&C1`, `&D2`,
 `S0=0`, `X4` and so on) answer `OK`. Dropping DTR (as many programs do to
-hang up) hangs up too. The modem doesn't answer calls (`ATA` says `NO
+hang up) hangs up too, and so does a reset (F10), which drops it, or
+changing the machine. The modem doesn't answer calls (`ATA` says `NO
 CARRIER`).
 
 The Pak takes bytes as fast as the program reads them and sends them at

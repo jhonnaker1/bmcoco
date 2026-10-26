@@ -76,6 +76,16 @@ struct cart *cartbus_cart(void)
 	return bus.cart;
 }
 
+/* Counts the cartridges taken over: it changes when the machine (and so
+   its cartridge) does, even if XRoar makes the new one where the old
+   one was. */
+static unsigned bus_generation;
+
+unsigned cartbus_generation(void)
+{
+	return bus_generation;
+}
+
 void cartbus_frame(void)
 {
 	struct cart *c = NULL;
@@ -102,6 +112,7 @@ void cartbus_frame(void)
 		c->read = bus_read;
 		c->write = bus_write;
 		c->reset = bus_reset;
+		bus_generation++;
 		activity_bus_reset();
 		bmcoco_rs232_bus_changed();
 	}

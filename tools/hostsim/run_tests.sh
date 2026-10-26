@@ -898,6 +898,85 @@ EOF
     check_log rs232_reboot "RS-232 Pak: connected to 127.0.0.1:65519" "the call connects"
     check_log rs232_reboot "reboot requested at frame [0-9]*, 0 connection" "the call is closed before the reboot"
 
+    echo "Calls end when the CoCo that made them is reset or replaced"
+    # close_server LOG PORT: accepts a connection and notes when it ends.
+    close_server() {
+        python3 - "$1" "$2" <<'EOF' &
+import socket, sys
+log = open(sys.argv[1], 'w')
+s = socket.socket()
+s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+s.bind(('127.0.0.1', int(sys.argv[2])))
+s.listen(1)
+s.settimeout(90)
+c, _ = s.accept()
+log.write('connected\n')
+log.flush()
+c.settimeout(90)
+while c.recv(256):
+    pass
+log.write('closed\n')
+log.flush()
+EOF
+    }
+    # The F12 menu's Machine page, then UP (0x52) or DOWN (0x51) twice
+    # from the machine running, from frame F: CoCo 3 up to the CoCo 2B
+    # (NTSC), CoCo 2B down to the CoCo 3 (Machine is the 7th item).
+    change_machine() {
+        local f=$1 key=$2 i out
+        out="$f key 0x45 1\n$((f + 1)) key 0x45 0\n"
+        f=$((f + 10))
+        for i in 1 2 3 4 5 6; do out="$out$f key 0x51 1\n$((f + 1)) key 0x51 0\n"; f=$((f + 4)); done
+        out="$out$f key 0x28 1\n$((f + 1)) key 0x28 0\n"
+        out="$out$((f + 10)) key $key 1\n$((f + 11)) key $key 0\n$((f + 14)) key $key 1\n$((f + 15)) key $key 0\n"
+        echo "$out$((f + 22)) key 0x28 1\n$((f + 23)) key 0x28 0\n"
+    }
+    pak_call() {
+        echo "300 type 10 A\$=\"ATDT127.0.0.1:$1\":GOSUB 100\\\\n\n700 type 20 GOTO 20\\\\n\n"
+        echo '1000 type 100 FOR I=1 TO LEN(A$):POKE 65384,ASC(MID$(A$,I,1)):NEXT:POKE 65384,13:RETURN\\n\n1700 type RUN\\n\n'
+    }
+    for name in pak_f10 pak_machine; do
+        mkdir -p "$OUT/$name/roms"
+        for f in "$BMCOCO_ROMS"/*; do ln -s "$f" "$OUT/$name/roms/" 2>/dev/null; done
+    done
+    close_server "$OUT/pak_f10/server.log" 65524
+    server=$!
+    sleep 1
+    (cd "$OUT/pak_f10" && printf "$(pak_call 65524)2400 key 0x43 1\n2401 key 0x43 0\n2600 webui reboot\n2700 quit\n" | \
+        BMCOCO_SIM_CONNECT_FRAMES=60 BMCOCO_IP=127.0.0.1 BMCOCO_CMDLINE="root=. machine=coco3 rs232=1" "$SIM" > log.txt 2>&1)
+    wait $server 2>/dev/null
+    check_log pak_f10 "RS-232 Pak: reset, hanging up" "F10 hangs up the modem's call (DTR off)"
+    check_log pak_f10 "closing all connections: 0 open" "the call was closed by the reset"
+    close_server "$OUT/pak_machine/server.log" 65525
+    server=$!
+    sleep 1
+    (cd "$OUT/pak_machine" && printf "$(pak_call 65525)$(change_machine 2400 0x52)2600 webui reboot\n2700 quit\n" | \
+        BMCOCO_SIM_CONNECT_FRAMES=60 BMCOCO_IP=127.0.0.1 BMCOCO_CMDLINE="root=. rs232=1" "$SIM" > log.txt 2>&1)
+    wait $server 2>/dev/null
+    check_log pak_machine "RS-232 Pak: the machine changed, hanging up" "another machine hangs up the modem's call"
+    check_log pak_machine "closing all connections: 0 open" "the call was closed by the change"
+    # A NitrOS-9 channel's call on the built-in DriveWire server (the IDE
+    # interface's Becker port), then a CoCo 3 with Disk BASIC: no Becker
+    # port, but the channel's call must still end.
+    name=dw_machine
+    mkdir -p "$OUT/$name/roms"
+    for f in "$BMCOCO_ROMS"/*; do ln -s "$f" "$OUT/$name/roms/" 2>/dev/null; done
+    rm -f "$OUT/$name/roms/hdblba.rom"
+    head -c 8192 /dev/zero > "$OUT/$name/roms/hdblba.rom"
+    printf 'machine coco2bus\nmachine-cart ide\n' > "$OUT/$name/xroar.conf"
+    close_server "$OUT/$name/server.log" 65526
+    server=$!
+    sleep 1
+    (cd "$OUT/$name" && printf '300 type 5 POKE &HFF42,&H45:POKE &HFF42,0\\n\n500 type 10 A$="tcp connect 127.0.0.1 65526":GOSUB 500\\n\n900 type 20 GOTO 20\\n\n1200 type 500 POKE &HFF42,&H64:POKE &HFF42,0:POKE &HFF42,LEN(A$)+1:FOR I=1 TO LEN(A$):POKE &HFF42,ASC(MID$(A$,I,1)):NEXT\\n\n2100 type 510 POKE &HFF42,13:RETURN\\n\n2400 type RUN\\n\n'"$(change_machine 5000 0x51)"'5400 webui reboot\n5500 quit\n' | \
+        BMCOCO_SIM_CONNECT_FRAMES=60 BMCOCO_IP=127.0.0.1 BMCOCO_CMDLINE="root=." "$SIM" > log.txt 2>&1)
+    wait $server 2>/dev/null
+    if grep -q "^connected" "$OUT/$name/server.log" 2>/dev/null && grep -q "part:coco3" "$OUT/$name/log.txt"; then
+        pass "$name: the channel called the server, then the machine changed to a CoCo 3"
+    else
+        fail $name "no call, or no change of machine (see out/$name)"
+    fi
+    check_log $name "closing all connections: 0 open" "the channel's call was closed by the change"
+
     echo "Becker port: a port that isn't a number"
     mkdir -p "$OUT/badport/roms"
     for f in "$BMCOCO_ROMS"/*; do ln -s "$f" "$OUT/badport/roms/" 2>/dev/null; done

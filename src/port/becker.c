@@ -309,6 +309,11 @@ void becker_close(struct becker *b)
 	if (b == NULL)
 		return;
 	disconnect(b);
+	/* The cartridge is gone (another machine, or taken out): NitrOS-9's
+	   channels on the built-in server go with it, even if the next
+	   machine has no Becker port to reset them. */
+	if (b->builtin == 1)
+		dwserver_reset();
 	free(b);
 }
 

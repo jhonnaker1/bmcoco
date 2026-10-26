@@ -103,6 +103,7 @@ void bmcoco_rs232_bus_changed(void);
 struct cart;
 void cartbus_frame(void);
 struct cart *cartbus_cart(void);
+unsigned cartbus_generation(void);
 
 /* menu.c */
 void bmcoco_menu(void);

@@ -848,6 +848,7 @@ void host_tcp_close(int connection)
 void host_tcp_close_all(void)
 {
 	int fd;
+	fprintf(stderr, "[sim] closing all connections: %d open\n", sim_tcp_count);
 	for (;;) {
 		pthread_mutex_lock(&sim_tcp_lock);
 		fd = sim_tcp_count > 0 ? sim_tcp_open[0] : -1;
