@@ -1,6 +1,24 @@
 //
 // test.cpp
 //
+// BMA800XL - A bare metal Atari 800XL emulator for Raspberry Pi
+// Copyright (C) 2026 aminch <https://github.com/aminch>
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+//
+// Modified for BMCoco.
+//
 // Tests the shared Pi 4/5 ARM smooth scaling and CRT shader (src/av/scaler.*)
 // on the PC:
 //  - every output pixel of the fast path is compared with
@@ -10,13 +28,10 @@
 //  - how long a frame takes on one core of this PC;
 //  - the pictures are written to tools/pi4scaler/out/ as PPM files.
 //
-// BMCoco's source is RGB565 (BMA800XL's is 8-bit indexed): the test card is
-// drawn with BMA800XL's palette and converted, so the checks are the same.
-//
 //   tools/pi4scaler/run_tests.sh
 //
-// This file is part of BMCoco, a bare metal Tandy Color Computer emulator for
-// the Raspberry Pi. See LICENSE for licensing details.
+// BMCoco's source is RGB565 (BMA800XL's is 8-bit indexed): the test card is
+// drawn with BMA800XL's palette and converted, so the checks are the same.
 //
 
 #include "../../src/av/scaler.h"

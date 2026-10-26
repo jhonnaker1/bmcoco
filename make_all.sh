@@ -1,7 +1,28 @@
 #!/bin/bash
 #
-# Builds the third party libraries (circle-stdlib: Circle and newlib, and the
-# Circle addons) and then the BMCoco kernel for one board:
+# make_all.sh
+#
+# BMC64 - A bare metal Commodore emulator for Raspberry Pi
+# Copyright (C) 2019 Randy Rossi <randy.rossi@gmail.com>
+# Copyright (C) 2026 aminch <https://github.com/aminch>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+#
+# Modified for BMA800XL from BMC64's make_all.sh: rewritten for BMA800XL's
+# boards, its patches and the atari800 library.
+#
+# Modified for BMCoco.
 #
 #   ./make_all.sh [pi0|pi2|pi3|pi4|pi5] [--skip-patches]
 #
@@ -12,6 +33,9 @@
 #                  armstub8-rpi4.bin (see docs/PI4.md)
 #   pi5            kernel_2712.img: Pi 5, Pi 500 and Pi 500+, 64-bit (see
 #                  docs/PI5.md)
+#
+# Builds the third party libraries (circle-stdlib: Circle and newlib, and the
+# Circle addons) and then the BMCoco kernel for one board:
 #
 # --skip-patches leaves Circle as it is instead of resetting it and applying
 # src/patches/ again.

@@ -12,6 +12,12 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+//
+// Modifications Copyright (C) 2026 aminch <https://github.com/aminch>
+// From BMC64's src/fbl.cpp, unchanged.
+//
+// Modified for BMCoco.
+//
 
 // Notes: This class started out being just a wrapper around the
 // dispmanx API to get frame buffer pixels to the screen using just

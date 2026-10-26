@@ -1,15 +1,30 @@
 //
 // regs.h
 //
+// BMA800XL - A bare metal Atari 800XL emulator for Raspberry Pi
+// Copyright (C) 2026 aminch <https://github.com/aminch>
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+//
+// Modified for BMCoco.
+//
 // Addresses and register fields of the BCM2712's display hardware used by
 // the Pi 5's direct display driver: the HVS (sixth generation, in its C
 // and D steppings), pixel valves 0 and 1, HDMI0 and HDMI1 and their PHYs.
 //
 // Sources: the BCM2712 device tree (addresses) and the behaviour of the
 // Linux vc4 display driver (registers, fields and values).
-//
-// This file is part of BMCoco, a bare metal Tandy Color Computer emulator for
-// the Raspberry Pi. See LICENSE for licensing details.
 //
 
 #ifndef BMCOCO_KMS_PI5_REGS_H_

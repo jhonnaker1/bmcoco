@@ -1,13 +1,29 @@
 //
 // kernel.h
 //
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+// Modifications Copyright (C) 2026 aminch <https://github.com/aminch>
+// Modified for BMA800XL from BMC64's src/kernel.h: parts of the class (the
+// USB handlers, Run and the Circle device members) come from it and
+// viceapp.h; the rest is BMA800XL's.
+//
+// Modified for BMCoco.
+//
 // The Circle kernel for BMCoco: brings up the hardware, then runs the
 // XRoar emulator on core 1 while core 0 services USB. The Pi Zero has
 // one core: the emulator runs on it, and USB is serviced by a task between
 // frames (as in BMC64's Pi Zero build).
-//
-// This file is part of BMCoco, a bare metal Tandy Color Computer emulator for the
-// Raspberry Pi. See LICENSE for licensing details.
 //
 
 #ifndef BMCOCO_KERNEL_H_

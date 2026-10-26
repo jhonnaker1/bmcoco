@@ -1,13 +1,37 @@
 #!/bin/bash
 #
-# Cleans everything: the kernel, the compiled XRoar library, the SD card
-# staging folder, and the third party builds inside circle-stdlib (which is
-# also reset to its pinned revision, undoing src/patches/).
+# clean_all.sh
+#
+# BMC64 - A bare metal Commodore emulator for Raspberry Pi
+# Copyright (C) 2019 Randy Rossi <randy.rossi@gmail.com>
+# Copyright (C) 2026 aminch <https://github.com/aminch>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+#
+# Modified for BMA800XL from BMC64's clean_all.sh: rewritten for BMA800XL:
+# also resets atari800, and --keep-sdcard.
+#
+# Modified for BMCoco.
 #
 #   ./clean_all.sh [--keep-sdcard]
 #
 # --keep-sdcard keeps build/sdcard, so build_sdcard.sh can clean between
 # boards while it fills the card.
+#
+# Cleans everything: the kernel, the compiled XRoar library, the SD card
+# staging folder, and the third party builds inside circle-stdlib (which is
+# also reset to its pinned revision, undoing src/patches/).
 #
 
 if [ ! -f sdcard/config.txt ]

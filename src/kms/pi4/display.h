@@ -1,10 +1,23 @@
 //
 // display.h
 //
-// The direct display driver's picture: two 32-bit pixel buffers in the
-// ARM's memory, shown in turn as one HVS plane, scaled to its place on the
-// screen by the HVS (hvs.h). BMCoco draws a frame into the buffer not
-// on screen, then flips.
+// BMA800XL - A bare metal Atari 800XL emulator for Raspberry Pi
+// Copyright (C) 2026 aminch <https://github.com/aminch>
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+//
+// Modified for BMCoco.
 //
 // Sources:
 //  - Circle, include/circle/memory.h: HEAP_DMA30, memory below 1 GB that
@@ -17,8 +30,10 @@
 //    semaphore.cpp: Circle's VCHIQ waits yield, which is how the Pi 3 runs
 //    them while it waits for a frame.
 //
-// This file is part of BMCoco, a bare metal Tandy Color Computer emulator for
-// the Raspberry Pi. See LICENSE for licensing details.
+// The direct display driver's picture: two 32-bit pixel buffers in the
+// ARM's memory, shown in turn as one HVS plane, scaled to its place on the
+// screen by the HVS (hvs.h). BMCoco draws a frame into the buffer not
+// on screen, then flips.
 //
 
 #ifndef BMCOCO_KMS_PI4_DISPLAY_H_

@@ -1,6 +1,24 @@
 //
 // draw.h
 //
+// BMA800XL - A bare metal Atari 800XL emulator for Raspberry Pi
+// Copyright (C) 2026 aminch <https://github.com/aminch>
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+//
+// Modified for BMCoco.
+//
 // Drawing with the 3D GPU (Pi 4 and Pi 5): a textured rectangle drawn through a
 // compiled shader program (shader.h) into an RGBA picture in memory. A
 // binning job sorts the rectangle into 64x64 tiles; a rendering job runs
@@ -15,9 +33,6 @@
 //  - src/gallium/drivers/v3d/v3d_resource.c, src/broadcom/common/
 //    v3d_tiling.c: the UIF texture layout.
 //  - src/broadcom/cle/v3d_packet.xml: the record layouts.
-//
-// This file is part of BMCoco, a bare metal Tandy Color Computer emulator for
-// the Raspberry Pi. See LICENSE for licensing details.
 //
 
 #ifndef BMCOCO_V3D_DRAW_H_

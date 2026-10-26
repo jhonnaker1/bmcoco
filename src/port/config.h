@@ -1,13 +1,28 @@
 /*
+ * BMA800XL - A bare metal Atari 800XL emulator for Raspberry Pi
+ * Copyright (C) 2026 aminch <https://github.com/aminch>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ *
+ * Modified for BMCoco.
+ *
  * config.h - XRoar's build options for BMCoco.
  *
  * XRoar's configure script normally writes this file. BMCoco builds XRoar
  * with its own makefile (src/port/xroar.mk), so the options are set here by
  * hand: every machine and cartridge XRoar has, no host toolkits, and the
  * user interface, video, sound and joystick modules from src/port/.
- *
- * This file is part of BMCoco, a bare metal Tandy Color Computer emulator for
- * the Raspberry Pi. See LICENSE for licensing details.
  */
 
 #ifndef BMCOCO_XROAR_CONFIG_H_

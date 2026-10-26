@@ -22,6 +22,8 @@ BMCoco uses the [circle-stdlib project](https://github.com/smuehlst/circle-stdli
 
 See [`third_party/circle-stdlib/`](https://github.com/smuehlst/circle-stdlib/tree/v21) for the version used by BMCoco and its accompanying copyright and license information. newlib's notices are in [`sdcard/licenses/newlib.txt`](../sdcard/licenses/newlib.txt) and [`sdcard/licenses/libgloss.txt`](../sdcard/licenses/libgloss.txt).
 
+The Raspberry Pi 4 and Pi 5 HDMI sound ([`src/av/hdmisound.cpp`](../src/av/hdmisound.cpp)) is adapted from Circle's HDMI sound driver, under Circle's GNU General Public License version 3 or later.
+
 ## GCC Runtime
 
 BMCoco links runtime code from the [Arm GNU Toolchain](https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads) 15.2.rel1 (GCC), under the GNU General Public License version 3 with the GCC Runtime Library Exception 3.1. The toolchain's GCC licence section is in [`sdcard/licenses/GCC-Runtime.txt`](../sdcard/licenses/GCC-Runtime.txt).
@@ -32,7 +34,7 @@ BMCoco incorporates source code from the [BMC64 project](https://github.com/rand
 
 See [BMC64](https://github.com/randyrossi/bmc64) for its source and its accompanying copyright and license information.
 
-BMC64-derived files retain their original license and attribution notices. For files licensed under Apache-2.0, see [the included license](../sdcard/licenses/Apache-2.0.txt); modifications are identified in their headers.
+BMC64-derived files retain their original license and attribution notices: the Apache License 2.0 (see [the included license](../sdcard/licenses/Apache-2.0.txt)) or BMC64's GNU General Public License version 3. Modifications are identified in their headers.
 
 ## Raspberry Pi Firmware
 

@@ -1,20 +1,23 @@
 //
 // video.h
 //
-// The Pi 4 and Pi 5 display: Circle's framebuffer driver (CBcmFrameBuffer), which
-// asks the VideoCore firmware for a framebuffer through the mailbox
-// property interface. The firmware puts it on the screen; BMCoco scales
-// the CoCo's picture into it.
+// BMA800XL - A bare metal Atari 800XL emulator for Raspberry Pi
+// Copyright (C) 2026 aminch <https://github.com/aminch>
 //
-// The picture comes from XRoar as RGB565 (BMA800XL's, from atari800, is
-// 8-bit indexed with a palette; this is its code, changed for that). Sharp
-// pixels (the default) use a 16-bit framebuffer the size of the display. Smooth scaling and the CRT shader (src/av/scaler.h) need
-// a 32-bit one; it is at most 1080 lines high (720 with curvature and
-// smooth both on), and on bigger displays the firmware scales it up.
-// Those pictures are drawn by cores 1, 2 and 3 together: core 1 runs the
-// emulator, cores 2 and 3 have nothing else to do.
-// With the crt_gpu option the 3D GPU draws them instead
-// (src/v3d/crt.h), and the ARM again if the GPU can't.
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+//
+// Modified for BMCoco.
 //
 // Sources:
 //  - Circle, include/circle/bcmframebuffer.h and lib/bcmframebuffer.cpp
@@ -40,8 +43,20 @@
 //    semaphore.cpp: Circle's VCHIQ waits yield, which is how the Pi 3 runs
 //    them while it waits for a frame.
 //
-// This file is part of BMCoco, a bare metal Tandy Color Computer emulator for
-// the Raspberry Pi. See LICENSE for licensing details.
+// The Pi 4 and Pi 5 display: Circle's framebuffer driver (CBcmFrameBuffer), which
+// asks the VideoCore firmware for a framebuffer through the mailbox
+// property interface. The firmware puts it on the screen; BMCoco scales
+// the CoCo's picture into it.
+//
+// The picture comes from XRoar as RGB565 (BMA800XL's, from atari800, is
+// 8-bit indexed with a palette; this is its code, changed for that). Sharp
+// pixels (the default) use a 16-bit framebuffer the size of the display. Smooth scaling and the CRT shader (src/av/scaler.h) need
+// a 32-bit one; it is at most 1080 lines high (720 with curvature and
+// smooth both on), and on bigger displays the firmware scales it up.
+// Those pictures are drawn by cores 1, 2 and 3 together: core 1 runs the
+// emulator, cores 2 and 3 have nothing else to do.
+// With the crt_gpu option the 3D GPU draws them instead
+// (src/v3d/crt.h), and the ARM again if the GPU can't.
 //
 
 #ifndef BMCOCO_AV_VIDEO_H_

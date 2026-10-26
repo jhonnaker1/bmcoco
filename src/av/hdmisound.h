@@ -1,6 +1,25 @@
 //
 // hdmisound.h
 //
+// BMA800XL - A bare metal Atari 800XL emulator for Raspberry Pi
+// Copyright (C) 2021-2024  R. Stange <rsta2@o2online.de>
+// Copyright (C) 2026 aminch <https://github.com/aminch>
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+//
+// Modified for BMCoco.
+//
 // HDMI sound on either HDMI port of the Pi 4 or 5. Circle's
 // CHDMISoundBaseDevice drives HDMI0 only ("This driver does not support
 // HDMI1 on Raspberry Pi 4"); this is that driver, adapted to take the
@@ -34,9 +53,6 @@
 //  - Linux, drivers/clk/bcm/clk-bcm2711-dvp.c: bit 4 of the DVP's
 //    MISC_CONFIG (DVP + 8) gates HDMI1's 108 MHz audio clock (set =
 //    off); the Pi 5's DVP is the same block ("brcm,brcm2711-dvp").
-//
-// This file is part of BMCoco, a bare metal Tandy Color Computer emulator for
-// the Raspberry Pi. See LICENSE for licensing details.
 //
 
 #ifndef BMCOCO_AV_HDMISOUND_H_

@@ -1,6 +1,31 @@
 //
 // scaler.h
 //
+// BMA800XL - A bare metal Atari 800XL emulator for Raspberry Pi
+// Copyright (C) 2026 aminch <https://github.com/aminch>
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+//
+//     Copyright (C) 2015-2016 davej
+//
+//     This program is free software; you can redistribute it and/or modify it
+//     under the terms of the GNU General Public License as published by the Free
+//     Software Foundation; either version 2 of the License, or (at your option)
+//     any later version.
+//
+// Modified for BMCoco.
+//
 // Smooth scaling and the CRT shader for the Pi 4 and Pi 5, done by the ARM cores.
 //
 // On the Pi 2 and 3 the VideoCore does both: the dispmanx layer's scaler
@@ -9,6 +34,9 @@
 // Circle kernel on the Pi 4 and Pi 5 has neither, so this draws the same pictures
 // in software, into the 32-bit framebuffer that src/av/video.cpp takes
 // from the firmware.
+//
+// The class doesn't know about Circle or threads: src/av/video.cpp shares
+// the work out between cores, and tools/pi4scaler tests it on a PC.
 //
 // Sources:
 //  - crt-pi, "A Raspberry Pi friendly CRT shader", Copyright (C) 2015-2016
@@ -51,12 +79,6 @@
 //  - Weights are fixed point (1/128 and 1/256), so colours may differ
 //    from a float shader by up to 3 levels of 255 (4 with curvature and
 //    smooth on, where four pixels are mixed).
-//
-// The class doesn't know about Circle or threads: src/av/video.cpp shares
-// the work out between cores, and tools/pi4scaler tests it on a PC.
-//
-// This file is part of BMCoco, a bare metal Tandy Color Computer emulator for
-// the Raspberry Pi. See LICENSE for licensing details.
 //
 
 #ifndef BMCOCO_AV_SCALER_H_

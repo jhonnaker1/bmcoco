@@ -1,4 +1,24 @@
 /*
+ * BMA800XL - A bare metal Atari 800XL emulator for Raspberry Pi
+ * Copyright (C) 2026 aminch <https://github.com/aminch>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ *
+ * Modified for BMCoco.
+ *
+ * A script on standard input drives the test, one command per line:
+ *
  * host_sim.c - runs the BMCoco emulator port on a PC for testing.
  *
  * Implements src/host.h with a simulated display, sound output and input,
@@ -6,8 +26,6 @@
  * Time is virtual: each display refresh advances the clock by one frame of
  * a 60 Hz (or BMCOCO_REFRESH Hz) display, so tests run as fast as the PC
  * allows.
- *
- * A script on standard input drives the test, one command per line:
  *
  *   <frame> key <usage> <0|1>     press or release a key (USB HID usage)
  *   <frame> type <text>            type text (US layout, one key per frame)
@@ -39,9 +57,6 @@
  * With BMCOCO_LIVE=PORT it runs in real time instead, with no script: the
  * screen, keyboard, gamepads and sound are in a web page at
  * http://127.0.0.1:PORT/ (live.c, live.html). tools/hostsim/live.sh starts it.
- *
- * This file is part of BMCoco, a bare metal Tandy Color Computer emulator for the
- * Raspberry Pi. See LICENSE for licensing details.
  */
 
 #include <pthread.h>

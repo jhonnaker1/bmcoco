@@ -1,6 +1,31 @@
+//
+// editor.js
+//
+// BMC64 - A bare metal Commodore emulator for Raspberry Pi
+// Copyright (C) 2026 aminch <https://github.com/aminch>
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+//
+// Modified for BMA800XL from BMC64's src/webui/assets/js/editor.js: the
+// Atari emulator's settings files, without the C64 BASIC editor.
+//
+// Modified for BMCoco.
+//
 // Overlay text editor for the device's config files (cmdline.txt,
 // config.txt, xroar.conf, bmcoco.cfg, wpa_supplicant.conf), which the device decides:
 // the file list marks them "edit".
+//
 
 import { $, normPath } from "./util.js";
 import * as api from "./api.js";

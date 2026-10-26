@@ -1,11 +1,33 @@
 //
 // scaler.cpp
 //
+// BMA800XL - A bare metal Atari 800XL emulator for Raspberry Pi
+// Copyright (C) 2026 aminch <https://github.com/aminch>
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+//
+//     Copyright (C) 2015-2016 davej
+//
+//     This program is free software; you can redistribute it and/or modify it
+//     under the terms of the GNU General Public License as published by the Free
+//     Software Foundation; either version 2 of the License, or (at your option)
+//     any later version.
+//
+// Modified for BMCoco.
+//
 // See scaler.h for what this is, the sources it follows and where it
 // differs from them.
-//
-// This file is part of BMCoco, a bare metal Tandy Color Computer emulator for
-// the Raspberry Pi. See LICENSE for licensing details.
 //
 
 #include "scaler.h"

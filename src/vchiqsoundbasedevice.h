@@ -1,9 +1,6 @@
 //
 // vchiqsoundbasedevice.h
 //
-// Modified for BMA800XL: BMC64's vicesoundbasedevice, with the class
-// renamed from ViceSoundBaseDevice to VchiqSoundBaseDevice.
-//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -15,6 +12,13 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+//
+// Modifications Copyright (C) 2026 aminch <https://github.com/aminch>
+// Modified for BMA800XL: BMC64's vicesoundbasedevice, with the class
+// renamed from ViceSoundBaseDevice to VchiqSoundBaseDevice.
+//
+// Modified for BMCoco.
+//
 
 #ifndef _vchiq_sound_base_device_h
 #define _vchiq_sound_base_device_h

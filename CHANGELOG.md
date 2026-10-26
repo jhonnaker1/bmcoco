@@ -7,6 +7,14 @@
 - The menu's *Turbo* is *Rate Limit (F11)*, as XRoar calls it (its
   Shift+F12): checked, the CoCo runs at its own speed; F11 turns it off
   and on ("Rate limit off")
+- Web UI uploads about 5 times faster: the file is written to the SD card
+  64 KB at a time, and Circle takes more of it between turns of its
+  network task (a wider TCP receive window). Each upload's speed is
+  logged (from BMA800XL, after BMC64)
+- The source files that come from BMA800XL now carry its copyright
+  notice (aminch) and licence, then "Modified for BMCoco", as BMA800XL's
+  own files now do; THIRD_PARTY.md says the Pi 4 and 5's HDMI sound is
+  adapted from Circle's, and that some BMC64 files are under its GPL
 - Tests: a reboot closes the Becker port's connection and a modem call
 
 ## 0.5.6 – 2026-10-23

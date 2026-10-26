@@ -1,19 +1,34 @@
 //
 // crt.h
 //
+// BMA800XL - A bare metal Atari 800XL emulator for Raspberry Pi
+// Copyright (C) 2026 aminch <https://github.com/aminch>
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+//
+// Modified for BMCoco.
+//
+// Pixels are 32-bit words 0xAARRGGBB, as the framebuffer and the HVS take
+// them. The GPU sees them as red in the low byte, but every channel is
+// treated alike, so they come out in the order they went in.
+//
 // The picture drawn by the 3D GPU of the Pi 4 or Pi 5: the emulator's
 // RGB565 screen is turned into 32-bit colour in a texture by the ARM (it
 // was BMA800XL's 8-bit indexed one, with a palette), and the GPU
 // scales it to the output, with crt-pi (tools/v3dshader/crt.frag) or as a
 // plain copy, sharp or smooth. The same pictures as src/av/scaler.h draws
 // on the ARM cores, which the self-test checks.
-//
-// Pixels are 32-bit words 0xAARRGGBB, as the framebuffer and the HVS take
-// them. The GPU sees them as red in the low byte, but every channel is
-// treated alike, so they come out in the order they went in.
-//
-// This file is part of BMCoco, a bare metal Tandy Color Computer emulator for
-// the Raspberry Pi. See LICENSE for licensing details.
 //
 
 #ifndef BMCOCO_V3D_CRT_H_

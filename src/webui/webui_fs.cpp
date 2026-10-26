@@ -1,21 +1,29 @@
 //
 // webui_fs.cpp
 //
-// Modified for BMA800XL: protects the Atari emulator's configuration
-// files; BMC64's profile and keyboard map files are removed.
-// Changed for BMCoco: CoCo files.
+// BMC64 - A bare metal Commodore emulator for Raspberry Pi
+// Copyright (C) 2026 aminch <https://github.com/aminch>
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
 //
-//     https://www.apache.org/licenses/LICENSE-2.0
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+//
+// Modified for BMA800XL from BMC64's src/webui/webui_fs.cpp: protects the
+// Atari emulator's configuration files; BMC64's profile and keyboard map
+// files are removed. Uploads fill a 64 KB buffer before each SD write and
+// log their speed.
+//
+// Modified for BMCoco: CoCo files.
+//
 
 #include "webui_fs.h"
 #include "webui.h"
@@ -25,8 +33,11 @@
 #include "webui_http.h"
 #include "webui_machine.h"
 
+#include <circle/logger.h>
 #include <circle/net/socket.h>
+#include <circle/netdevice.h>
 #include <circle/sched/scheduler.h>
+#include <circle/timer.h>
 #include <circle/types.h>
 
 #include <stdio.h>
@@ -45,7 +56,9 @@ using webhttp::CChunkedResponse;
 namespace {
 
 const unsigned WEBUI_FS_MAX_ENTRIES = 6000;
-const unsigned WEBUI_FS_IO_CHUNK = 32 * 1024;
+// Matches Circle's TCP receive window (see circle_tcp_window_patch.diff), so
+// one upload batch can take a whole window of segments.
+const unsigned WEBUI_FS_IO_CHUNK = 64 * 1024;
 // Largest file the editor will open or save (the config files are a few KB;
 // the body is streamed to a temp file, so this is not a RAM limit).
 const unsigned WEBUI_FS_EDIT_MAX = 256 * 1024;
@@ -378,25 +391,72 @@ BodyResult ReceiveBodyToFile(CSocket *socket, const char *temppath,
     written += prefetched_len;
   }
 
+  // Circle returns one TCP segment per Receive, so fill the whole buffer
+  // before writing: a blocking Receive on an empty queue lets the other
+  // tasks run, and the SD card gets a few large writes instead of many
+  // small ones (no task, including the network, runs during a write).
+  // A Receive into less space than the segment drops the rest of it, so
+  // only ask for more while a whole frame still fits (or the body ends).
+  // From BMC64's src/webui/webui_fs.cpp.
+  u64 start_ticks = CTimer::GetClockTicks64();
+  unsigned long batches = 0;
+  u64 wait_ticks = 0;
+  u64 write_ticks = 0;
+  u64 yield_ticks = 0;
   while (result == BODY_OK && written < total) {
-    unsigned long remain = total - written;
-    unsigned want = remain < sizeof(s_io_buffer) ? (unsigned) remain
-                                                 : sizeof(s_io_buffer);
-    int n = socket->Receive(s_io_buffer, want, 0);
-    if (n <= 0) {
-      result = BODY_TRUNCATED;
+    unsigned fill = 0;
+    for (;;) {
+      unsigned long remain = total - written - fill;
+      unsigned space = sizeof(s_io_buffer) - fill;
+      if (remain == 0 || (space < FRAME_BUFFER_SIZE && remain > space)) {
+        break;
+      }
+      unsigned want = remain < space ? (unsigned) remain : space;
+      u64 t0 = CTimer::GetClockTicks64();
+      int n = socket->Receive(s_io_buffer + fill, want, 0);
+      wait_ticks += CTimer::GetClockTicks64() - t0;
+      if (n <= 0) {
+        result = BODY_TRUNCATED;
+        break;
+      }
+      fill += (unsigned) n;
+    }
+    if (result != BODY_OK) {
       break;
     }
-    if (reject_nul && memchr(s_io_buffer, 0, (unsigned) n) != 0) {
+    if (reject_nul && memchr(s_io_buffer, 0, fill) != 0) {
       result = BODY_HAS_NUL;
       break;
     }
-    if (sd_write(file, s_io_buffer, (unsigned) n) != SD_OK) {
+    u64 t1 = CTimer::GetClockTicks64();
+    if (sd_write(file, s_io_buffer, fill) != SD_OK) {
       result = BODY_WRITE_FAILED;
       break;
     }
-    written += (unsigned) n;
+    u64 t2 = CTimer::GetClockTicks64();
+    write_ticks += t2 - t1;
+    written += fill;
+    batches++;
     CScheduler::Get()->Yield();
+    yield_ticks += CTimer::GetClockTicks64() - t2;
+  }
+
+  // Throughput, the average batch size and where the time went show what
+  // limits an upload: waiting for data (the network; other tasks also run
+  // while it waits), SD writes, or other tasks between batches.
+  if (result == BODY_OK && batches > 0) {
+    const u64 per_ms = CLOCKHZ / 1000;
+    u64 ms = (CTimer::GetClockTicks64() - start_ticks) / per_ms;
+    CLogger::Get()->Write("webui", LogNotice,
+                          "Received %lu bytes in %lu ms (%lu KB/s), "
+                          "%lu batches of %lu bytes avg; "
+                          "waiting %lu ms, SD writes %lu ms, other tasks %lu ms",
+                          total, (unsigned long) ms,
+                          ms > 0 ? (unsigned long) (total / ms) : 0UL,
+                          batches, (unsigned long) (total / batches),
+                          (unsigned long) (wait_ticks / per_ms),
+                          (unsigned long) (write_ticks / per_ms),
+                          (unsigned long) (yield_ticks / per_ms));
   }
 
   if (sd_close(file) != SD_OK && result == BODY_OK) {

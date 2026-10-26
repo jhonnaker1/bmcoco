@@ -1,6 +1,28 @@
 //
 // webui.cpp
 //
+// BMC64 - A bare metal Commodore emulator for Raspberry Pi
+// Copyright (C) 2026 aminch <https://github.com/aminch>
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+//
+// Modified for BMA800XL from BMC64's src/webui/webui.cpp: always built,
+// with the BMA800XL host name, version and power and reset requests;
+// BMC64's profiles are removed.
+//
+// Modified for BMCoco: the CoCo machine, files and colours.
+//
 // Minimal HTTP/1.1 server for the LAN web UI, from BMC64. Runs as a single
 // Circle scheduler task. Scheduler tasks run when the emulator core yields
 // (once a frame, and while it waits), so long I/O loops yield to keep the
@@ -15,21 +37,6 @@
 // When a PIN is configured, every request must carry HTTP Basic Auth
 // (Authorization: Basic base64(<user>:<pin>)); the username is ignored.
 //
-// Modified for BMA800XL: always built, with the BMA800XL host name,
-// version and power and reset requests; BMC64's profiles are removed.
-// Changed for BMCoco: the CoCo machine, files and colours.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     https://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 
 #include "webui.h"
 

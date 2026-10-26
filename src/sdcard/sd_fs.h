@@ -1,6 +1,23 @@
-// File access on the SD card, for the code from BMC64: the web UI, the log
-// file and the Wi-Fi checks. Paths are absolute on the card
-// ("/bmcoco.cfg"); the card's volume is added here.
+//
+// sd_fs.h
+//
+// BMC64 - A bare metal Commodore emulator for Raspberry Pi
+// Copyright (C) 2026 aminch <https://github.com/aminch>
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+//
+// Modified for BMCoco.
 //
 // sd_fs_fatfs.c implements this on the Pi with FatFs; tools/sdcard/
 // sd_fs_posix.c implements it on a folder of a PC for the tests.
@@ -8,6 +25,11 @@
 // same on both.
 //
 // The emulators' stdio (fopen etc.) doesn't use this; it is new_io.cpp.
+//
+// File access on the SD card, for the code from BMC64: the web UI, the log
+// file and the Wi-Fi checks. Paths are absolute on the card
+// ("/bmcoco.cfg"); the card's volume is added here.
+//
 
 #ifndef BMC64_SD_FS_H
 #define BMC64_SD_FS_H

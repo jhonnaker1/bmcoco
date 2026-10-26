@@ -15,5 +15,6 @@ Patches are applied to the submodule revisions pinned by circle-stdlib v21
 | `circle_bolt_keyboard_patch.diff` | Adds Logitech Bolt keyboard receiver support (from BMC64). |
 | `circle_linux_bug_patch.diff` | Turns off `BUG_ON`. Circle's Linux emulation, which VCHIQ uses for the display and sound, asserts with `BUG_ON` that it only runs on core 0; BMCoco calls it from core 1, where the emulator runs (as BMC64 does with VICE). Without it the Pi halts with `mutex.cpp(9): assertion failed`. From BMC64's `circle_patch.diff`. |
 | `circle_sysconfig_patch.diff` | Enables multi-core support and the USB FIQ in `sysconfig.h`. From BMC64's `circle_patch.diff`. Also saves the floating point registers on interrupts on the Pi Zero, as Circle already does on the Pi 2 and later with GCC 12 or newer; on its one core, interrupts would otherwise clobber the emulator's (BMC64's Pi Zero build does the same). |
+| `circle_tcp_window_patch.diff` | Raises Circle's TCP receive window from 10 to 44 segments (64,240 bytes, the largest that fits without window scaling), so a sender can deliver more between turns of the network task. This speeds up web UI uploads. From BMC64. |
 
 XRoar is not patched; see `docs/UPDATING.md`.
