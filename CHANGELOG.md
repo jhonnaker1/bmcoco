@@ -1,4 +1,4 @@
-## 0.5.7 – unreleased
+## 0.5.7 – 2026-10-26
 
 - Fixed: Reboot and Shut Down left network connections open on the other
   computer: a DriveWire server (pyDriveWire keeps a connection for hours),
