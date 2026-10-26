@@ -1,4 +1,4 @@
-## 0.5.8 – unreleased
+## 0.5.8 – 2026-10-26
 
 - Fixed: changing the machine (a CoCo 3 to a CoCo 2, say) left NitrOS-9's
   network channels on the built-in DriveWire server connected when the new
