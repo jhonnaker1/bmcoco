@@ -14,7 +14,8 @@
  * Y-cable or a Multi-Pak with both: cartbus.c takes over the cartridge's
  * read() and write(), and the Pak answers at $FF68-$FF6B. So there must be
  * a cartridge (Disk BASIC's controller usually is; with none, the Pak
- * isn't there). The rs232 option (Cartridge, RS-232 Pak) turns it on.
+ * isn't there). It's there unless the rs232 option (Cartridge, RS-232 Pak)
+ * turns it off.
  *
  * The 6551, as far as programs see it:
  *  - $FF68 data: the byte received (reading it empties the receiver), and
@@ -481,7 +482,9 @@ static void rx_put_cb(void *arg, uint8_t c)
 
 void bmcoco_rs232_settings_changed(void)
 {
-	rs.enabled = host_option_int("rs232", 0) != 0;
+	/* On unless rs232=0: a terminal program set to the Pak reads garbage
+	   when there's none, and can be too busy with it to open its menus. */
+	rs.enabled = host_option_int("rs232", 1) != 0;
 	if (!rs.enabled) {
 		hang_up();
 		if (rs.irq_line && cartbus_cart() != NULL)

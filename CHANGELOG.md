@@ -1,3 +1,11 @@
+## 0.5.9 – unreleased
+
+- The RS-232 Pak is on by default (`rs232=0`, or *RS-232 Pak* in the
+  Cartridge page, turns it off). A terminal program set to the Pak with
+  none there reads garbage, and Twilight Terminal, with that saved as its
+  setting, was too busy with it to open its menus
+- Tests: with no `rs232=` the Pak answers at $FF68
+
 ## 0.5.8 – 2026-10-26
 
 - Fixed: changing the machine (a CoCo 3 to a CoCo 2, say) left NitrOS-9's

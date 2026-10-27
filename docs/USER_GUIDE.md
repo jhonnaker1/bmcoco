@@ -290,9 +290,11 @@ means the built-in server: nothing else can listen there on the Pi.
 BMCoco can add Tandy's RS-232 Pak, with a virtual modem on its cable, for
 calling telnet BBSes from CoCo terminal programs: the Deluxe RS-232
 Program Pak, Ultimaterm, Mikey-Term, Greg-E-Term and others written for the
-Pak (a 6551 at `$FF68`), and NitrOS-9's `/T2`. Turn on *RS-232 Pak
-(Modem)* in the menu's *Cartridge* page (`rs232=1` in `cmdline.txt`), and
-networking.
+Pak (a 6551 at `$FF68`), and NitrOS-9's `/T2`. The Pak is there unless
+*RS-232 Pak (Modem)* is turned off in the menu's *Cartridge* page
+(`rs232=0` in `cmdline.txt`); the modem needs networking. (A terminal
+program set to the Pak with none there reads garbage, and can be too busy
+with it to open its menus.)
 
 The Pak goes in beside the cartridge plugged in, as if both were in a
 Multi-Pak: Disk BASIC's controller usually is, so terminal programs can be
@@ -421,7 +423,7 @@ web UI.
 | `hires_mouse_x`, `hires_mouse_y` | start,end (microseconds) | `629,5792`, `1257,4307` | The Hi-Res Mouse's timing for each axis (see Joysticks) |
 | `ram_NAME`          | K, e.g. `ram_coco3=2048`     | machine's | The RAM of machine NAME (the menu's *Memory*) |
 | `hd0`, `hd1`, `hd_cart` | paths, a cartridge name  | none     | Hard disk images and their cartridge (the menu's *Hard Disks*) |
-| `rs232`             | `0`, `1`                     | `0`      | The RS-232 Pak with a virtual modem, beside the cartridge (Cartridge, RS-232 Pak) |
+| `rs232`             | `0`, `1`                     | `1`      | The RS-232 Pak with a virtual modem, beside the cartridge (Cartridge, RS-232 Pak) |
 | `becker_ip`, `becker_port` | address, port         | none (built in), `65504` | The Becker port's DriveWire server on another computer |
 | `dw0` ... `dw3`     | paths                        | none     | The built-in DriveWire server's disk images (the menu's *DriveWire*) |
 | `gpio_joysticks`    | `0`, `1`                     | `0`      | Joysticks on the GPIO header |

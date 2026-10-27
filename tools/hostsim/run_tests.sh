@@ -857,9 +857,10 @@ EOF
     else
         fail rs232 "+++ and ATH didn't hang up (see out/rs232/server.log and log.txt)"
     fi
+    # With no rs232= (the Pak is there by default).
     (cd "$OUT/rs232_nc" && rs232_basic 65518 | BMCOCO_SIM_CONNECT_FRAMES=120 BMCOCO_IP=127.0.0.1 \
-        BMCOCO_CMDLINE="root=. rs232=1" "$SIM" > log.txt 2>&1)
-    check_log rs232_nc "RS-232 Pak: can't connect to 127.0.0.1:65518" "a call nobody answers fails"
+        BMCOCO_CMDLINE="root=." "$SIM" > log.txt 2>&1)
+    check_log rs232_nc "RS-232 Pak: can't connect to 127.0.0.1:65518" "a call nobody answers fails (the Pak there by default)"
     for name in rs232 rs232_nc; do
         line=$(grep "frames presented" "$OUT/$name/log.txt" | tail -1)
         presented=$(echo "$line" | sed 's/.*: \([0-9]*\) frames presented/\1/')
@@ -870,7 +871,7 @@ EOF
         fi
     done
     (cd "$OUT/rs232_off" && rs232_basic 65518 | BMCOCO_IP=127.0.0.1 \
-        BMCOCO_CMDLINE="root=." "$SIM" > log.txt 2>&1)
+        BMCOCO_CMDLINE="root=. rs232=0" "$SIM" > log.txt 2>&1)
     if grep -q "RS-232 Pak:" "$OUT/rs232_off/log.txt"; then
         fail rs232_off "the Pak answered while switched off"
     else
