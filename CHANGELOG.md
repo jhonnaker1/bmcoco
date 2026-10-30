@@ -1,4 +1,4 @@
-## 0.5.9 – unreleased
+## 0.5.9 – 2026-10-30
 
 - The RS-232 Pak is on by default (`rs232=0`, or *RS-232 Pak* in the
   Cartridge page, turns it off). A terminal program set to the Pak with
