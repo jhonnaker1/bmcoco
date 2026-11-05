@@ -780,23 +780,162 @@ static void ui_free(void *sptr)
 	free(sptr);
 }
 
-/* RAM sizes chosen in the menu (ram_NAME=K, one per machine), onto the
-   machines XRoar has set up from xroar.conf, before it makes one. */
-static void apply_ram_settings(void)
+/* Each machine's settings from the menu, kept in bmcoco.cfg (NAME is the
+   machine's, as in xroar.conf):
+     ram_NAME=K           its RAM
+     bas_NAME=ROM         a CoCo 1 or 2's Color BASIC (bas10 ... bas13)
+     extbas_NAME=0 or 1   a CoCo 1 or 2 without or with Extended BASIC
+     cart_NAME=CART       its cartridge, or none
+   Below 16K a CoCo 1 or 2 has only Color BASIC unless extbas_NAME=1
+   (Extended BASIC needs 16K, and Disk BASIC Extended BASIC), as real 4K
+   and 8K CoCos did; XRoar on its own loads both, and hangs. They are
+   put onto the machines XRoar has set up from xroar.conf before it makes
+   one, and again when the menu changes them. What xroar.conf gave is
+   kept, to go back to when a setting is taken away. */
+struct machine_defaults {
+	struct machine_config *mc;
+	bool bas_dfn, extbas_dfn, default_cart_dfn, cart_enabled;
+	char *bas_rom, *extbas_rom, *default_cart;
+};
+#define MAX_MACHINE_DEFAULTS 64
+static struct machine_defaults machine_defaults[MAX_MACHINE_DEFAULTS];
+
+static struct machine_defaults *defaults_of(struct machine_config *mc)
 {
-	struct slist *l;
-	for (l = machine_config_list(); l != NULL; l = l->next) {
-		struct machine_config *mc = l->data;
-		char key[64];
-		int k;
-		snprintf(key, sizeof key, "ram_%s", mc->name);
-		k = host_option_int(key, 0);
-		if (k > 0) {
-			mc->ram = k;
-			if (mc->architecture == NULL || strcmp(mc->architecture, "coco3") != 0)
-				mc->ram_org = ANY_AUTO;
+	int i;
+	for (i = 0; i < MAX_MACHINE_DEFAULTS; i++) {
+		struct machine_defaults *d = &machine_defaults[i];
+		if (d->mc == mc)
+			return d;
+		if (d->mc == NULL) {
+			d->mc = mc;
+			d->bas_dfn = mc->bas_dfn;
+			d->extbas_dfn = mc->extbas_dfn;
+			d->default_cart_dfn = mc->default_cart_dfn;
+			d->cart_enabled = mc->cart_enabled;
+			d->bas_rom = mc->bas_rom ? xstrdup(mc->bas_rom) : NULL;
+			d->extbas_rom = mc->extbas_rom ? xstrdup(mc->extbas_rom) : NULL;
+			d->default_cart = mc->default_cart ? xstrdup(mc->default_cart) : NULL;
+			return d;
 		}
 	}
+	return NULL;
+}
+
+static void set_string(char **p, const char *value)
+{
+	free(*p);
+	*p = value ? xstrdup(value) : NULL;
+}
+
+static int is_coco12(const struct machine_config *mc)
+{
+	return mc->architecture != NULL && strcmp(mc->architecture, "coco") == 0;
+}
+
+/* Color BASIC 1.3 doesn't start in 4K or 8K: below 16K, unless one is
+   chosen, the newest of 1.2, 1.1 and 1.0 there is (1.3 if there's no
+   other). */
+static const char *small_coco_basic(void)
+{
+	static const char *const names[] = {"bas12", "bas11", "bas10", NULL};
+	int i;
+	for (i = 0; names[i] != NULL; i++) {
+		sds path = romlist_find(names[i]);
+		if (path != NULL) {
+			sdsfree(path);
+			return names[i];
+		}
+	}
+	return "";
+}
+
+int bmcoco_machine_extbas(struct machine_config *mc)
+{
+	char key[64];
+	snprintf(key, sizeof key, "extbas_%s", mc->name);
+	if (!is_coco12(mc))
+		return TRUE;
+	return host_option_int(key, mc->ram >= 16 ? 1 : 0) != 0;
+}
+
+void bmcoco_apply_machine_settings(struct machine_config *mc)
+{
+	struct machine_defaults *d = defaults_of(mc);
+	const char *value;
+	char key[64];
+	int k;
+	if (d == NULL)
+		return;
+	snprintf(key, sizeof key, "ram_%s", mc->name);
+	k = host_option_int(key, 0);
+	if (k > 0 && k != mc->ram) {
+		mc->ram = k;
+		if (mc->architecture == NULL || strcmp(mc->architecture, "coco3") != 0)
+			mc->ram_org = ANY_AUTO;
+	}
+	if (is_coco12(mc)) {
+		snprintf(key, sizeof key, "bas_%s", mc->name);
+		value = host_option(key, "");
+		if (value[0] == '\0' && mc->ram < 16 && !d->bas_dfn)
+			value = small_coco_basic();
+		if (value[0] != '\0') {
+			set_string(&mc->bas_rom, value);
+			mc->bas_dfn = 1;
+		} else {
+			set_string(&mc->bas_rom, d->bas_rom);
+			mc->bas_dfn = d->bas_dfn;
+		}
+		if (bmcoco_machine_extbas(mc)) {
+			set_string(&mc->extbas_rom, d->extbas_rom);
+			mc->extbas_dfn = d->extbas_dfn;
+		} else {
+			set_string(&mc->extbas_rom, NULL);
+			mc->extbas_dfn = 1;
+		}
+	}
+	snprintf(key, sizeof key, "cart_%s", mc->name);
+	value = host_option(key, "");
+	if (strcmp(value, "none") == 0) {
+		mc->cart_enabled = 0;
+	} else if (value[0] != '\0' && cart_config_by_name(value) != NULL) {
+		set_string(&mc->default_cart, value);
+		mc->default_cart_dfn = 1;
+		mc->cart_enabled = 1;
+	} else {
+		set_string(&mc->default_cart, d->default_cart);
+		mc->default_cart_dfn = d->default_cart_dfn;
+		/* Disk BASIC needs Extended BASIC. */
+		mc->cart_enabled = d->cart_enabled && bmcoco_machine_extbas(mc);
+	}
+}
+
+static void apply_machine_settings(void)
+{
+	struct slist *l;
+	for (l = machine_config_list(); l != NULL; l = l->next)
+		bmcoco_apply_machine_settings(l->data);
+}
+
+/* The file a ROM name (bas13, @coco...) stands for, without its folder,
+   or NULL. */
+const char *bmcoco_rom_file(const char *name)
+{
+	static char buf[4][64];
+	static int next;
+	sds path;
+	const char *base;
+	char *out;
+	if (name == NULL || name[0] == '\0')
+		return NULL;
+	path = romlist_find(name);
+	if (path == NULL)
+		return NULL;
+	base = strrchr(path, '/');
+	out = buf[next++ & 3];
+	snprintf(out, sizeof buf[0], "%s", base ? base + 1 : path);
+	sdsfree(path);
+	return out;
 }
 
 static void *ui_new(void *cfg)
@@ -811,7 +950,7 @@ static void *ui_new(void *cfg)
 	bmcoco_menu_attach();
 	disk_activity_attach();
 	bmcoco_rs232_settings_changed();
-	apply_ram_settings();
+	apply_machine_settings();
 	return ui;
 }
 

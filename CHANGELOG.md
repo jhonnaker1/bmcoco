@@ -1,3 +1,23 @@
+## 0.5.10 – unreleased
+
+- Fixed: a CoCo 1 or 2 with 4K or 8K hung at the start. XRoar loaded
+  Extended BASIC and Disk BASIC, which need 16K; below 16K it now has
+  Color BASIC alone, as a real 4K CoCo did (`PRINT MEM`: 2343), and 1.2
+  rather than 1.3, which doesn't start in 4K. Ticking Extended BASIC (in
+  the new ROMs page) brings both back
+- ROMs page in the menu: the ROM files loaded (About lists them too); for
+  a CoCo 1 or 2, which Color BASIC (1.0 to 1.3) and whether it has
+  Extended BASIC, kept for each machine (`bas_NAME`, `extbas_NAME`)
+- Fixed: choosing no cartridge (or another) in the Cartridge page lasted
+  until the next boot, when RS-DOS came back. It is now kept for each
+  machine (`cart_NAME`)
+- Rate Limit no longer closes the menu, as the other ticks don't
+- Video, TV Input offers RGB only on a CoCo 3 (the CoCo 1 and 2 had none)
+- The Joysticks page says what the gamepad's buttons do since 0.5.6 (X
+  fires as A, Y as B), not that X types Space
+- Tests: a 4K CoCo 1 starts with Color BASIC alone; the ROM and
+  cartridge choices kept in bmcoco.cfg
+
 ## 0.5.9 – 2026-10-30
 
 - The RS-232 Pak is on by default (`rs232=0`, or *RS-232 Pak* in the

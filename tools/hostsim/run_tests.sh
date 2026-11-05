@@ -277,9 +277,9 @@ differ gpiomenu menu gpio
 same gpiomenu gpio keys
 
 echo "Screen size"
-# Menu, down nine to Video, down three to Screen Size, down two from 100%
+# Menu, down ten to Video, down three to Screen Size, down two from 100%
 # to 90%: saved as scale=0.90 (for a TV that cuts off the edges).
-run size 60 "$TESTROMS" "" '120 key 0x45 1\n121 key 0x45 0\n128 key 0x51 1\n129 key 0x51 0\n130 key 0x51 1\n131 key 0x51 0\n132 key 0x51 1\n133 key 0x51 0\n134 key 0x51 1\n135 key 0x51 0\n136 key 0x51 1\n137 key 0x51 0\n138 key 0x51 1\n139 key 0x51 0\n140 key 0x51 1\n141 key 0x51 0\n142 key 0x51 1\n143 key 0x51 0\n144 key 0x51 1\n145 key 0x51 0\n150 key 0x28 1\n151 key 0x28 0\n160 key 0x51 1\n161 key 0x51 0\n162 key 0x51 1\n163 key 0x51 0\n164 key 0x51 1\n165 key 0x51 0\n170 key 0x28 1\n171 key 0x28 0\n175 shot sizes.ppm\n180 key 0x51 1\n181 key 0x51 0\n182 key 0x51 1\n183 key 0x51 0\n190 key 0x28 1\n191 key 0x28 0\n200 shot video.ppm\n300 quit\n'
+run size 60 "$TESTROMS" "" '120 key 0x45 1\n121 key 0x45 0\n128 key 0x51 1\n129 key 0x51 0\n130 key 0x51 1\n131 key 0x51 0\n132 key 0x51 1\n133 key 0x51 0\n134 key 0x51 1\n135 key 0x51 0\n136 key 0x51 1\n137 key 0x51 0\n138 key 0x51 1\n139 key 0x51 0\n140 key 0x51 1\n141 key 0x51 0\n142 key 0x51 1\n143 key 0x51 0\n144 key 0x51 1\n145 key 0x51 0\n146 key 0x51 1\n147 key 0x51 0\n150 key 0x28 1\n151 key 0x28 0\n160 key 0x51 1\n161 key 0x51 0\n162 key 0x51 1\n163 key 0x51 0\n164 key 0x51 1\n165 key 0x51 0\n170 key 0x28 1\n171 key 0x28 0\n175 shot sizes.ppm\n180 key 0x51 1\n181 key 0x51 0\n182 key 0x51 1\n183 key 0x51 0\n190 key 0x28 1\n191 key 0x28 0\n200 shot video.ppm\n300 quit\n'
 if grep -q "^scale=0.90" "$OUT/size/bmcoco.cfg" 2>/dev/null; then
     pass "size: Video > Screen Size 90% saved as scale=0.90"
 else
@@ -460,6 +460,33 @@ if [ -n "${BMCOCO_ROMS:-}" ]; then
         pass "keypad: the keypad's 5 types"
     else
         fail keypad "the keypad's 5 typed nothing (see out/keypad)"
+    fi
+
+    echo "A 4K CoCo 1, and each machine's ROMs and cartridge"
+    # Below 16K, Color BASIC alone (1.2: 1.3 doesn't start in 4K), as on
+    # a real 4K CoCo: XRoar on its own loads Extended and Disk BASIC too,
+    # and hangs.
+    run coco4k 60 "$BMCOCO_ROMS" "machine=cocous ram_cocous=4" '300 peek COLO 4\n301 quit\n'
+    if grep -q "FILE bas12.rom" "$OUT/coco4k/log.txt" && ! grep -q "FILE extbas\|FILE disk" "$OUT/coco4k/log.txt"; then
+        pass "coco4k: Color BASIC 1.2 only (no Extended or Disk BASIC)"
+    else
+        fail coco4k "expected bas12.rom alone (see out/coco4k/log.txt)"
+    fi
+    # The banner, COLOR BASIC 1.2, in screen memory ("R BA" after COLO; a space is $60 on the screen).
+    if grep -q "peek COLO: 52 60 42 41" "$OUT/coco4k/log.txt"; then
+        pass "coco4k: BASIC starts (its banner is on the screen)"
+    else
+        fail coco4k "no COLOR BASIC banner on the screen (see out/coco4k/log.txt)"
+    fi
+    # The menu's choices, kept in bmcoco.cfg: no cartridge, Color BASIC 1.0.
+    mkdir -p "$OUT/cocoroms"
+    printf 'ram_cocous=16\ncart_cocous=none\nbas_cocous=bas10\n' > "$OUT/cocoroms/bmcoco.cfg"
+    run cocoroms 60 "$BMCOCO_ROMS" "machine=cocous" '300 quit\n'
+    if grep -q "FILE bas10.rom" "$OUT/cocoroms/log.txt" && grep -q "FILE extbas" "$OUT/cocoroms/log.txt" \
+       && ! grep -q "FILE disk" "$OUT/cocoroms/log.txt"; then
+        pass "cocoroms: bas_ and cart_ in bmcoco.cfg: Color BASIC 1.0, Extended BASIC, no cartridge"
+    else
+        fail cocoroms "expected bas10 and extbas, no disk ROM (see out/cocoroms/log.txt)"
     fi
 
     echo "CoCo 3 sound on a 60 Hz display"

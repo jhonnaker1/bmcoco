@@ -586,6 +586,17 @@ static const char *cart_name(int id)
 	return "None";
 }
 
+/* The machine's cartridge, kept for it (cart_NAME in bmcoco.cfg). */
+static void save_cart_choice(const char *name)
+{
+	char key[64];
+	if (xroar.machine_config == NULL)
+		return;
+	snprintf(key, sizeof key, "cart_%s", xroar.machine_config->name);
+	save_setting(key, name);
+	bmcoco_apply_machine_settings(xroar.machine_config);
+}
+
 static void cart_menu(void)
 {
 	enum { C_NONE = -10, C_FILE = -11, C_RS232 = -12 };
@@ -622,9 +633,13 @@ static void cart_menu(void)
 		if (browse("Load Cartridge", cart_exts, path, sizeof(path)))
 			xroar_load_file_by_type(path, 1);
 	} else if (chosen == C_NONE) {
+		save_cart_choice("none");
 		ui_update_state(-1, ui_tag_cartridge, 0, NULL);
 		xroar_hard_reset();
 	} else if (chosen >= 0) {
+		struct cart_config *cc = cart_config_by_id(chosen);
+		if (cc != NULL)
+			save_cart_choice(cc->name);
 		ui_update_state(-1, ui_tag_cartridge, chosen, NULL);
 		xroar_hard_reset();
 	}
@@ -741,8 +756,123 @@ static void memory_menu(void)
 		mc->ram_org = ANY_AUTO;     /* the chips for that size */
 	snprintf(key, sizeof key, "ram_%s", mc->name);
 	save_setting_int(key, sizes[i]);
+	/* Below 16K a CoCo 1 or 2 loses Extended and Disk BASIC (and has
+	   them back above). */
+	bmcoco_apply_machine_settings(mc);
 	ui_update_state(-1, ui_tag_machine, mc->id, NULL);
 	osd_notify("Machine reset with the new memory");
+}
+
+/* ---- ROMs --------------------------------------------------------------- */
+
+/* The ROM files the running machine has: "Color BASIC: bas13.rom" and so
+   on, a line each, into BUF. */
+static void loaded_roms(char *buf, size_t size)
+{
+	struct machine_config *mc = xroar.machine_config;
+	struct cart *c = xroar.machine ? xroar.machine->get_interface(xroar.machine, "cart") : NULL;
+	const char *f;
+	size_t n = 0;
+	buf[0] = '\0';
+	if (mc == NULL)
+		return;
+	if (mc->architecture != NULL && strcmp(mc->architecture, "coco") == 0) {
+		f = bmcoco_rom_file(mc->bas_rom);
+		n += snprintf(buf + n, size - n, "Color BASIC: %s\n", f ? f : "none");
+		f = bmcoco_rom_file(mc->extbas_rom);
+		n += snprintf(buf + n, size - n, "Extended BASIC: %s\n", f ? f : "none");
+	} else {
+		f = bmcoco_rom_file(mc->extbas_rom);
+		if (f != NULL && n < size)
+			n += snprintf(buf + n, size - n, "BASIC: %s\n", f);
+		f = bmcoco_rom_file(mc->altbas_rom);
+		if (f != NULL && n < size)
+			n += snprintf(buf + n, size - n, "Other BASIC: %s\n", f);
+	}
+	if (n < size) {
+		const char *rom = c && c->config ? c->config->rom : NULL;
+		f = bmcoco_rom_file(rom);
+		n += snprintf(buf + n, size - n, "Cartridge: %s\n",
+		              c == NULL ? "none" : f ? f : "no ROM");
+	}
+}
+
+/* Color BASIC (bas10 ... bas13, those there are) and Extended BASIC for a
+   CoCo 1 or 2, kept for it (bas_NAME, extbas_NAME in bmcoco.cfg); the
+   machine is set up again and hard reset, as choosing a machine does. */
+static void roms_menu(void)
+{
+	static const char *const bas_names[] = {"bas10", "bas11", "bas12", "bas13", NULL};
+	static const char *const bas_versions[] = {"1.0", "1.1", "1.2", "1.3"};
+	enum { R_BAS = 1, R_EXTBAS };
+	int sel = 0;
+	for (;;) {
+		struct machine_config *mc = xroar.machine_config;
+		char loaded[256], lines[6][48], key[64], bas_text[24];
+		const char *bas;
+		struct osd_item items[16];
+		int n = 0, chosen, i, coco12;
+		char *p, *q;
+		if (mc == NULL)
+			return;
+		coco12 = mc->architecture != NULL && strcmp(mc->architecture, "coco") == 0;
+		snprintf(key, sizeof key, "bas_%s", mc->name);
+		bas = host_option(key, "");
+		snprintf(bas_text, sizeof bas_text, "Automatic");
+		for (i = 0; bas_names[i] != NULL; i++)
+			if (strcmp(bas, bas_names[i]) == 0)
+				snprintf(bas_text, sizeof bas_text, "%s", bas_versions[i]);
+		if (coco12) {
+			items[n++] = (struct osd_item){"Color BASIC", bas_text, OSD_ITEM_SUBMENU, R_BAS};
+			items[n++] = (struct osd_item){"Extended BASIC", NULL,
+			                               check(bmcoco_machine_extbas(mc)), R_EXTBAS};
+			items[n++] = (struct osd_item){"", NULL, OSD_ITEM_LABEL, -1};
+		}
+		items[n++] = (struct osd_item){"Loaded now:", NULL, OSD_ITEM_LABEL, -1};
+		loaded_roms(loaded, sizeof loaded);
+		for (p = loaded, i = 0; *p != '\0' && i < 6; p = q + 1, i++) {
+			q = strchr(p, '\n');
+			if (q == NULL)
+				break;
+			snprintf(lines[i], sizeof lines[i], " %.*s", (int) (q - p), p);
+			items[n++] = (struct osd_item){lines[i], NULL, OSD_ITEM_LABEL, -1};
+		}
+		if (coco12) {
+			items[n++] = (struct osd_item){"", NULL, OSD_ITEM_LABEL, -1};
+			items[n++] = (struct osd_item){"Below 16K, Color BASIC only (as on", NULL, OSD_ITEM_LABEL, -1};
+			items[n++] = (struct osd_item){"a 4K CoCo), unless ticked.", NULL, OSD_ITEM_LABEL, -1};
+		}
+		chosen = osd_menu("ROMs", items, n, &sel);
+		if (chosen == R_BAS) {
+			const char *choices[6];
+			int names[6], m = 0, current = 0;
+			choices[m] = "Automatic (the newest)";
+			names[m++] = -1;
+			for (i = 0; bas_names[i] != NULL; i++) {
+				sds path = romlist_find(bas_names[i]);
+				if (path == NULL)
+					continue;
+				sdsfree(path);
+				if (strcmp(bas, bas_names[i]) == 0)
+					current = m;
+				choices[m] = bas_versions[i];
+				names[m++] = i;
+			}
+			choices[m] = NULL;
+			i = osd_choose("Color BASIC", choices, current);
+			if (i < 0 || i == current)
+				continue;
+			save_setting(key, names[i] < 0 ? "" : bas_names[names[i]]);
+		} else if (chosen == R_EXTBAS) {
+			snprintf(key, sizeof key, "extbas_%s", mc->name);
+			save_setting_int(key, !bmcoco_machine_extbas(mc));
+		} else {
+			return;
+		}
+		bmcoco_apply_machine_settings(mc);
+		ui_update_state(-1, ui_tag_machine, mc->id, NULL);
+		osd_notify("Machine reset with the new ROMs");
+	}
 }
 
 /* ---- Joysticks ---------------------------------------------------------- */
@@ -863,8 +993,12 @@ static void joysticks_menu(void)
 			{"", NULL, OSD_ITEM_LABEL, -1},
 			{"Joystick Test", NULL, OSD_ITEM_SUBMENU, J_TEST},
 			{"", NULL, OSD_ITEM_LABEL, -1},
-			{"Gamepad: A fire, B fire 2,", NULL, OSD_ITEM_LABEL, -1},
-			{"X Space, Y Enter.", NULL, OSD_ITEM_LABEL, -1},
+			{setting_on("pad_keys", FALSE) ? "Gamepad: A fire, B fire 2,"
+			                               : "Gamepad: A or X fire, B or Y",
+			 NULL, OSD_ITEM_LABEL, -1},
+			{setting_on("pad_keys", FALSE) ? "X Space, Y Enter (pad_keys)."
+			                               : "the second button.",
+			 NULL, OSD_ITEM_LABEL, -1},
 		};
 		int chosen = osd_menu("Joysticks", items, sizeof(items) / sizeof(items[0]), &sel);
 		switch (chosen) {
@@ -996,13 +1130,24 @@ static void video_menu(void)
 			save_setting("crt_curvature", setting_on("crt_curvature", FALSE) ? "0" : "1");
 			reboot_needed = TRUE;
 			break;
-		case V_TV:
-			i = choose_enum("TV Input", machine_tv_input_list, state.tv_input);
+		case V_TV: {
+			/* RGB only for the CoCo 3: the CoCo 1 and 2's VDG has no
+			   RGB output. */
+			struct xconfig_enum inputs[8];
+			int k2 = 0, coco3 = xroar.machine_config != NULL
+			        && xroar.machine_config->architecture != NULL
+			        && strcmp(xroar.machine_config->architecture, "coco3") == 0;
+			for (k = 0; machine_tv_input_list[k].name != NULL && k2 < 7; k++)
+				if (coco3 || machine_tv_input_list[k].value != TV_INPUT_RGB)
+					inputs[k2++] = machine_tv_input_list[k];
+			inputs[k2] = (struct xconfig_enum){0};   /* the end */
+			i = choose_enum("TV Input", inputs, state.tv_input);
 			if (i >= 0) {
-				ui_update_state(-1, ui_tag_tv_input, machine_tv_input_list[i].value, NULL);
-				save_setting("tv_input", machine_tv_input_list[i].name);
+				ui_update_state(-1, ui_tag_tv_input, inputs[i].value, NULL);
+				save_setting("tv_input", inputs[i].name);
 			}
 			break;
+		}
 		case V_CCR: {
 			/* The two most accurate are too much for a Pi 2 or 3
 			   (they make it fall behind): say so. */
@@ -1384,12 +1529,13 @@ static void network_menu(void)
 
 static void about(void)
 {
-	char text[640], status[64];
+	char text[900], status[64], roms[256];
 	const char *missing = bmcoco_missing_roms();
 	int w, h, load_avg, load_max;
 	host_display_size(&w, &h);
 	bmcoco_load(&load_avg, &load_max);
 	host_network_status(status, sizeof(status));
+	loaded_roms(roms, sizeof roms);
 	snprintf(text, sizeof(text),
 	         "BMCoco " BMCOCO_VERSION "\n"
 	         "Bare metal Tandy Color Computer\n"
@@ -1399,12 +1545,14 @@ static void about(void)
 	         "Based on BMA800XL and BMC64.\n\n"
 	         "Machine: %s\n"
 	         "ROMs: %s\n"
+	         "%s%s"
 	         "%s\n"
 	         "Display: %dx%d %.2f Hz\n"
 	         "Machine: %.2f Hz, %s\n"
 	         "Load: %d%% of a frame (most %d%%)\n"
 	         "Network: %s",
 	         machine_name(), missing ? "MISSING" : "OK", missing ? missing : "",
+	         missing ? "\n" : "", roms,
 	         w, h, bmcoco_refresh_rate(), bmcoco_machine_rate(),
 	         !bmcoco_vsync_locked() ? "timer paced"
 	         : bmcoco_overloaded() ? "Pi too slow: timer paced" : "locked to display",
@@ -1423,7 +1571,7 @@ static void offer_reboot(void)
 void bmcoco_menu(void)
 {
 	enum {
-		M_RUN, M_DISKS, M_HD, M_DW, M_TAPE, M_CART, M_MACHINE, M_MEMORY, M_JOYSTICKS, M_VIDEO, M_KEYBOARD,
+		M_RUN, M_DISKS, M_HD, M_DW, M_TAPE, M_CART, M_MACHINE, M_MEMORY, M_ROMS, M_JOYSTICKS, M_VIDEO, M_KEYBOARD,
 		M_SOUND, M_NETWORK, M_TURBO, M_RESET, M_HARD_RESET, M_ABOUT, M_REBOOT, M_OFF
 	};
 	static int sel = 2;
@@ -1444,6 +1592,7 @@ void bmcoco_menu(void)
 			{"Cartridge", cart_name(state.cart_id), OSD_ITEM_SUBMENU, M_CART},
 			{"Machine", NULL, OSD_ITEM_SUBMENU, M_MACHINE},
 			{"Memory", memory_value(), OSD_ITEM_SUBMENU, M_MEMORY},
+			{"ROMs", NULL, OSD_ITEM_SUBMENU, M_ROMS},
 			{"Joysticks", NULL, OSD_ITEM_SUBMENU, M_JOYSTICKS},
 			{"Video", NULL, OSD_ITEM_SUBMENU, M_VIDEO},
 			{"Keyboard", NULL, OSD_ITEM_SUBMENU, M_KEYBOARD},
@@ -1468,12 +1617,13 @@ void bmcoco_menu(void)
 		case M_CART: cart_menu(); break;
 		case M_MACHINE: machine_menu(); break;
 		case M_MEMORY: memory_menu(); break;
+		case M_ROMS: roms_menu(); break;
 		case M_JOYSTICKS: joysticks_menu(); break;
 		case M_VIDEO: video_menu(); break;
 		case M_KEYBOARD: keyboard_menu(); break;
 		case M_SOUND: sound_menu(); break;
 		case M_NETWORK: network_menu(); break;
-		case M_TURBO: bmcoco_set_turbo(!bmcoco_turbo()); leave = TRUE; break;
+		case M_TURBO: bmcoco_set_turbo(!bmcoco_turbo()); break;
 		case M_RESET: xroar_soft_reset(); leave = TRUE; break;
 		case M_HARD_RESET: xroar_hard_reset(); leave = TRUE; break;
 		case M_ABOUT: about(); break;

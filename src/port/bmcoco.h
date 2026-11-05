@@ -66,6 +66,15 @@ void bmcoco_set_turbo(int on);
 /* The machine running, as XRoar describes it (for the web UI), or "". */
 const char *bmcoco_machine_description(void);
 const char *bmcoco_missing_roms(void);
+
+/* platform.c: each machine's RAM, ROMs and cartridge from bmcoco.cfg
+   (ram_, bas_, extbas_, cart_NAME), put onto its config again after the
+   menu changes them; whether a CoCo 1 or 2 has Extended BASIC; the file
+   a ROM name stands for. */
+struct machine_config;
+void bmcoco_apply_machine_settings(struct machine_config *mc);
+int bmcoco_machine_extbas(struct machine_config *mc);
+const char *bmcoco_rom_file(const char *name);
 /* Reboot or power off, closing files first. */
 void bmcoco_request_power(int power_off);
 /* Web UI requests waiting to be done; menus close for them. */

@@ -62,11 +62,12 @@ with it.
 | Hard Disks     | Hard disk images for drives 0 and 1 of an IDE interface (see Hard disks) |
 | DriveWire      | The DriveWire server for the Becker port, built in or on another computer, and the built-in one's drives 0-3 (see The Becker port) |
 | Cassette       | Insert a tape (then type `CLOAD` or `CLOADM`), rewind, eject, fast loading |
-| Cartridge      | Plug in a cartridge file, one of XRoar's built in cartridges (Disk BASIC and others), or none; and the RS-232 Pak with its virtual modem (see below) |
+| Cartridge      | Plug in a cartridge file, one of XRoar's built in cartridges (Disk BASIC and others), or none, kept for that machine; and the RS-232 Pak with its virtual modem (see below) |
 | Machine        | CoCo 1, 2 or 3, PAL or NTSC, with or without a 6309, and the other machines XRoar emulates. Machines without ROMs are marked |
-| Memory         | The machine's RAM: 128K, 512K, 1M or 2M for a CoCo 3, 4K to 64K for a CoCo 1 or 2 (or a Dragon). The machine is reset with it, and it is kept for that machine |
+| Memory         | The machine's RAM: 128K, 512K, 1M or 2M for a CoCo 3, 4K to 64K for a CoCo 1 or 2 (or a Dragon). The machine is reset with it, and it is kept for that machine. Below 16K a CoCo 1 or 2 has only Color BASIC, as a real 4K CoCo did (see ROMs) |
+| ROMs           | The ROM files the machine has loaded; for a CoCo 1 or 2, which Color BASIC (1.0 to 1.3, those in `roms`, or the newest) and whether it has Extended BASIC. Kept for that machine. Below 16K, Extended BASIC and the Disk BASIC cartridge are left out unless Extended BASIC is ticked (they need 16K), and Color BASIC 1.2 is taken over 1.3, which doesn't start in 4K |
 | Joysticks      | What is plugged into each joystick port, which gamepad is which joystick, GPIO joysticks, and a joystick test |
-| Video          | TV input (composite with artifact colours, S-Video, or RGB for the CoCo 3), the artifact colour renderer, how much border to show, the screen size (smaller for a TV that cuts off the edges), the frame lock, the resolution (Pi 5), the CRT effect and its curvature, smooth scaling |
+| Video          | TV input (composite with artifact colours, S-Video, or RGB, offered for the CoCo 3 only), the artifact colour renderer, how much border to show, the screen size (smaller for a TV that cuts off the edges), the frame lock, the resolution (Pi 5), the CRT effect and its curvature, smooth scaling |
 | Keyboard       | Typed characters on or off, and the PC keyboard's layout |
 | Sound          | Volume, and HDMI or the headphone jack |
 | Network        | Ethernet or Wi-Fi, and the web UI (see below) |
@@ -422,6 +423,9 @@ web UI.
 | `mouse_speed`       | percent                      | `100`    | How far the mouse moves the pointer (see Joysticks) |
 | `hires_mouse_x`, `hires_mouse_y` | start,end (microseconds) | `629,5792`, `1257,4307` | The Hi-Res Mouse's timing for each axis (see Joysticks) |
 | `ram_NAME`          | K, e.g. `ram_coco3=2048`     | machine's | The RAM of machine NAME (the menu's *Memory*) |
+| `bas_NAME`          | `bas10` ... `bas13`          | the newest | A CoCo 1 or 2's Color BASIC (the menu's *ROMs*) |
+| `extbas_NAME`       | `0`, `1`                     | `1` (`0` below 16K) | A CoCo 1 or 2 with Extended BASIC (the menu's *ROMs*) |
+| `cart_NAME`         | a cartridge's name, `none`   | machine's | The cartridge of machine NAME (the menu's *Cartridge*) |
 | `hd0`, `hd1`, `hd_cart` | paths, a cartridge name  | none     | Hard disk images and their cartridge (the menu's *Hard Disks*) |
 | `rs232`             | `0`, `1`                     | `1`      | The RS-232 Pak with a virtual modem, beside the cartridge (Cartridge, RS-232 Pak) |
 | `becker_ip`, `becker_port` | address, port         | none (built in), `65504` | The Becker port's DriveWire server on another computer |
