@@ -1,4 +1,4 @@
-## 0.5.10 – unreleased
+## 0.5.10 – 2026-11-05
 
 - Fixed: a CoCo 1 or 2 with 4K or 8K hung at the start. XRoar loaded
   Extended BASIC and Disk BASIC, which need 16K; below 16K it now has
