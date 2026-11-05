@@ -1,6 +1,13 @@
+## 0.5.11 – unreleased
+
+- Memory offers 4K only on a CoCo 1 (XRoar's *Tandy CoCo*, with the
+  original 6847): no CoCo 2 had 4K (Radio Shack's catalogues have 4K
+  CoCo 1s in 1981 and 1982 only), and no CoCo 8K. A CoCo 2B and a Dragon
+  are offered 16K to 64K
+
 ## 0.5.10 – 2026-11-05
 
-- Fixed: a CoCo 1 or 2 with 4K or 8K hung at the start. XRoar loaded
+- Fixed: a 4K CoCo 1 hung at the start. XRoar loaded
   Extended BASIC and Disk BASIC, which need 16K; below 16K it now has
   Color BASIC alone, as a real 4K CoCo did (`PRINT MEM`: 2343), and 1.2
   rather than 1.3, which doesn't start in 4K. Ticking Extended BASIC (in

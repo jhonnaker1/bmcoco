@@ -697,16 +697,23 @@ static void machine_menu(void)
 
 /* ---- Memory ---------------------------------------------------------------- */
 
-/* The RAM sizes XRoar has for a machine, in K: a CoCo 3 128K to 2M (as
-   with a 512K upgrade or a 2M board), a CoCo 1 or 2 (or a Dragon) 4K to
-   64K. The MC-10's is fixed. */
+/* The RAM sizes a machine was sold with or upgraded to, in K: a CoCo 3
+   128K to 2M (as with a 512K upgrade or a 2M board), a CoCo 1 (XRoar's
+   CoCo with the original 6847) 4K to 64K (Radio Shack's catalogues have
+   4K CoCo 1s in 1981 and 1982, none with 8K), a CoCo 2B or a Dragon 16K
+   to 64K (no CoCo 2 had 4K). The MC-10's is fixed. */
 static const int *ram_sizes(const struct machine_config *mc)
 {
 	static const int coco3[] = {128, 512, 1024, 2048, 0};
-	static const int coco[] = {4, 16, 32, 64, 0};
+	static const int coco1[] = {4, 16, 32, 64, 0};
+	static const int coco2[] = {16, 32, 64, 0};
 	if (mc == NULL || mc->architecture == NULL || strcmp(mc->architecture, "mc10") == 0)
 		return NULL;
-	return strcmp(mc->architecture, "coco3") == 0 ? coco3 : coco;
+	if (strcmp(mc->architecture, "coco3") == 0)
+		return coco3;
+	if (strcmp(mc->architecture, "coco") == 0 && mc->vdg_type != VDG_6847T1)
+		return coco1;
+	return coco2;
 }
 
 static const char *ram_text(int k, char *buf, size_t size)
