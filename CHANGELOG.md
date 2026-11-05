@@ -4,6 +4,8 @@
   original 6847): no CoCo 2 had 4K (Radio Shack's catalogues have 4K
   CoCo 1s in 1981 and 1982 only), and no CoCo 8K. A CoCo 2B and a Dragon
   are offered 16K to 64K
+- The Keyboard page says how to switch to lower case: Shift+Enter with
+  *Typed Characters* on, Shift+0 (as on the CoCo) with it off
 
 ## 0.5.10 – 2026-11-05
 

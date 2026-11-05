@@ -91,7 +91,7 @@ boot.
 | Arrow keys, Tab        | Arrow keys (Tab is right arrow)               |
 | Backspace, Delete      | Left arrow (backspace)                        |
 | Shift+Backspace        | Erase the line                                |
-| Shift+Enter            | Caps lock (SHIFT+0)                           |
+| Shift+Enter            | Lower/upper case (the CoCo's SHIFT+0), with *Typed Characters* on; off, Shift+0 does it, as on the CoCo |
 | Alt                    | CoCo 3 ALT                                    |
 | Caps Lock, Windows     | CoCo 3 CTRL                                   |
 | F1, F2                 | CoCo 3 F1, F2                                 |
