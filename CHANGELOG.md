@@ -1,4 +1,4 @@
-## 0.5.11 – unreleased
+## 0.5.11 – 2026-11-06
 
 - Memory offers 4K only on a CoCo 1 (XRoar's *Tandy CoCo*, with the
   original 6847): no CoCo 2 had 4K (Radio Shack's catalogues have 4K
