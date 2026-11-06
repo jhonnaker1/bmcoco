@@ -159,6 +159,10 @@ const char *host_option(const char *name, const char *default_value)
 			v = set_value[i];
 	static char ret[8][256];
 	static int slot;
+	/* No start-up screen unless BMCOCO_CMDLINE asks for one (splash=1):
+	   the tests count frames from the start. */
+	if (v == NULL && strcmp(name, "splash") == 0)
+		return "0";
 	if (v == NULL)
 		return default_value;
 	slot = (slot + 1) % 8;

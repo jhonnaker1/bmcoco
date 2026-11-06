@@ -139,6 +139,58 @@ static void draw_frame(const char *title, const char *hint)
 		put_centred(OSD_ROWS - 1, hint, C_DKGREEN, C_BLACK);
 }
 
+/* ---- The start-up screen ------------------------------------------------------ */
+
+/* A glyph of the GIME's font (rows 0-9), each of its pixels drawn
+   2 * SCALE wide (the OSD's pixels are half as wide as tall) and SCALE
+   tall, in FG only. */
+static void draw_big_char(uint16_t *fb, int pitch, int x, int y, unsigned char c,
+                          int scale, uint16_t fg)
+{
+	const unsigned char *glyph;
+	int row, col, i, j;
+	if (c >= 0x80 || c < 0x20)
+		return;
+	glyph = &font_gime[c * 12];
+	for (row = 0; row < CELL_H; row++)
+		for (col = 0; col < 8; col++)
+			if (glyph[row] & (0x80 >> col))
+				for (i = 0; i < scale; i++)
+					for (j = 0; j < 2 * scale; j++)
+						fb[(y + row * scale + i) * pitch + x + col * 2 * scale + j] = fg;
+}
+
+static void draw_big_text(int y, const char *text, int scale, uint16_t fg)
+{
+	int pitch, x = (OSD_W - (int) strlen(text) * CELL_W * scale) / 2;
+	uint16_t *fb = osd_fb(&pitch);
+	for (; *text != '\0'; text++, x += CELL_W * scale)
+		draw_big_char(fb, pitch, x, y, (unsigned char) *text, scale, fg);
+}
+
+void osd_splash(const char *version, const char *status)
+{
+	/* The VDG's eight colours (as in the web UI), under the name: green,
+	   yellow, blue, red, buff, cyan, magenta, orange. */
+	static const uint16_t vdg[8] = {
+		0x3706, 0xf76b, 0x4aff, 0xe1c7, 0xf79c, 0x2eb4, 0xf27e, 0xfbc3
+	};
+	int pitch, i, x, y, left = (OSD_W - 6 * CELL_W * 4) / 2;
+	uint16_t *fb = osd_fb(&pitch);
+	char line[OSD_COLS + 1];
+	clear_screen();
+	draw_big_text(50, "BMCoco", 4, C_GREEN);
+	for (i = 0; i < 8; i++)
+		for (y = 100; y < 110; y++)
+			for (x = left + i * 48; x < left + (i + 1) * 48; x++)
+				fb[y * pitch + x] = vdg[i];
+	fit(line, sizeof line, version, OSD_COLS);
+	draw_big_text(130, line, 1, C_GREEN);
+	fit(line, sizeof line, status, OSD_COLS);
+	draw_big_text(160, line, 1, C_ORANGE);
+	bmcoco_osd_view(TRUE);
+}
+
 /* ---- Opening and closing ------------------------------------------------------ */
 
 void osd_open(void)

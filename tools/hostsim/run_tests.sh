@@ -204,6 +204,14 @@ same kjoy left stick
 differ kjoy centre fire
 same kjoy centre centre2
 
+echo "Start-up screen"
+# With splash=1 (the simulator leaves it out otherwise, as the tests count
+# frames): BMCoco's name, the VDG colours and "Starting the CoCo..." in
+# orange, kept for 1.5 s, then the CoCo.
+run splash 60 "$TESTROMS" "splash=1" '80 shot logo.ppm\n200 shot coco.ppm\n201 quit\n'
+has_colour splash logo 255 129 0 "the start-up screen is shown"
+differ splash logo coco
+
 echo "Menu"
 run menu 60 "$TESTROMS" "" '120 shot before.ppm\n130 key 0x45 1\n131 key 0x45 0\n150 shot menu.ppm\n160 key 0x51 1\n161 key 0x51 0\n170 key 0x28 1\n171 key 0x28 0\n190 shot browse.ppm\n200 key 0x45 1\n201 key 0x45 0\n230 shot after.ppm\n231 quit\n'
 has_colour menu menu 255 129 0 "the menu shows its selection bar"

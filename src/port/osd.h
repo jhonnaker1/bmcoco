@@ -78,6 +78,10 @@ int osd_edit(const char *title, char *text, size_t size, int secret);
    message stays on the screen, and the display open, until the next
    drawing or osd_close(). */
 void osd_message(const char *text, int wait);
+
+/* The screen shown while XRoar starts: BMCoco's name, the VDG's colours,
+   VERSION and STATUS. */
+void osd_splash(const char *version, const char *status);
 /* A page of text (lines separated by \n), until a key is pressed. */
 void osd_info(const char *title, const char *text);
 /* Asks a yes/no question; returns 1 for yes. */

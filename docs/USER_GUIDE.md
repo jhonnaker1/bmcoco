@@ -427,6 +427,7 @@ web UI.
 | `extbas_NAME`       | `0`, `1`                     | `1` (`0` below 16K) | A CoCo 1 or 2 with Extended BASIC (the menu's *ROMs*) |
 | `cart_NAME`         | a cartridge's name, `none`   | machine's | The cartridge of machine NAME (the menu's *Cartridge*) |
 | `hd0`, `hd1`, `hd_cart` | paths, a cartridge name  | none     | Hard disk images and their cartridge (the menu's *Hard Disks*) |
+| `splash`            | `0`, `1`                     | `1`      | The start-up screen (BMCoco's name and version, for 1.5 s) |
 | `rs232`             | `0`, `1`                     | `1`      | The RS-232 Pak with a virtual modem, beside the cartridge (Cartridge, RS-232 Pak) |
 | `becker_ip`, `becker_port` | address, port         | none (built in), `65504` | The Becker port's DriveWire server on another computer |
 | `dw0` ... `dw3`     | paths                        | none     | The built-in DriveWire server's disk images (the menu's *DriveWire*) |

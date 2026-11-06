@@ -1530,11 +1530,26 @@ static void fatal(const char *text)
 	}
 }
 
+#ifndef BMCOCO_VERSION
+#define BMCOCO_VERSION "dev"
+#endif
+
+/* How long the start-up screen stays, at least. */
+#define SPLASH_SECONDS 1.5
+
+static void show_splash(void)
+{
+	char version[64];
+	snprintf(version, sizeof version, "Version %s", BMCOCO_VERSION);
+	osd_splash(version, "Starting the CoCo...");
+	host_video_present(TRUE);
+}
+
 void bmcoco_main(void)
 {
 	static char *argv[64];
 	int argc, pitch;
-	double last_second;
+	double last_second, splash_until = 0.0;
 
 	if (host_video_init(FB_W, FB_H, &fb_pixels, &pitch) != 0) {
 		LOG_ERROR("BMCoco: no display\n");
@@ -1546,6 +1561,13 @@ void bmcoco_main(void)
 	apply_view();
 	measure_refresh_rate();
 	open_sound();
+
+	/* The start-up screen, kept for a moment (XRoar starts in well under
+	   a second); splash=0 leaves it out. */
+	if (host_option_int("splash", 1)) {
+		show_splash();
+		splash_until = host_time() + SPLASH_SECONDS;
+	}
 
 	/* The built-in DriveWire server's disks (the menu's DriveWire page). */
 	{
@@ -1566,6 +1588,14 @@ void bmcoco_main(void)
 		fatal("XRoar did not start. The log (see the User Guide) says why.");
 	xroar_init_finish();
 	choose_machine();
+	if (splash_until > 0.0) {
+		show_splash();   /* again: XRoar cleared the screen as it started */
+		while (host_time() < splash_until) {
+			bmcoco_idle();
+			host_video_present(TRUE);
+		}
+		bmcoco_osd_view(FALSE);
+	}
 
 	{
 		const char *missing = bmcoco_missing_roms();

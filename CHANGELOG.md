@@ -6,6 +6,10 @@
   are offered 16K to 64K
 - The Keyboard page says how to switch to lower case: Shift+Enter with
   *Typed Characters* on, Shift+0 (as on the CoCo) with it off
+- A start-up screen, as BMAmiga has: BMCoco's name over the VDG's eight
+  colours, the version and "Starting the CoCo...", for 1.5 seconds
+  (`splash=0` in `cmdline.txt` leaves it out)
+- Tests: the start-up screen
 
 ## 0.5.10 – 2026-11-05
 
