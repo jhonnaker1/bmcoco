@@ -1,4 +1,4 @@
-## 0.5.12 – unreleased
+## 0.5.12 – 2026-11-19
 
 - USB sticks, from BMA800XL: up to three FAT sticks, as USB:, USB2: and
   USB3:. The menu's file browser has a <Drives> entry while one is in, for
