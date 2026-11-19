@@ -1,4 +1,4 @@
-## 0.5.13 – unreleased
+## 0.5.13 – 2026-11-19
 
 - Fixed: changing a Wi-Fi setting in the menu (the network, password or
   country) spoiled a Wi-Fi key of 64 hex digits in `wpa_supplicant.conf`
