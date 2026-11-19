@@ -490,8 +490,8 @@ static const char *const dw_exts[] = {"dsk", "os9", "vhd", "img", "dw", NULL};
 static int dw_builtin(void)
 {
 	const char *ip = host_option("becker_ip", "");
-	return ip[0] == '\0' || strcmp(ip, "builtin") == 0 || strcmp(ip, "127.0.0.1") == 0
-	       || strcmp(ip, "localhost") == 0;
+	return ip[0] == '\0' || strcasecmp(ip, "builtin") == 0 || strcmp(ip, "127.0.0.1") == 0
+	       || strcasecmp(ip, "localhost") == 0;
 }
 
 /* Uses the server at IP:PORT (IP "" for the built-in one) from now on, and
