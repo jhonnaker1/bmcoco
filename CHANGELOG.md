@@ -1,3 +1,12 @@
+## 0.5.13 – unreleased
+
+- Fixed: changing a Wi-Fi setting in the menu (the network, password or
+  country) spoiled a Wi-Fi key of 64 hex digits in `wpa_supplicant.conf`
+  (as `wpa_passphrase` writes it): it was cut to 63 and put in quotes, so
+  Wi-Fi stopped working. A password with a `"` in it was cut short too.
+  Both are now written back as they were (found in BMApple2)
+- Tests: the Wi-Fi key and a password with a `"` kept
+
 ## 0.5.12 – 2026-11-19
 
 - USB sticks, from BMA800XL: up to three FAT sticks, as USB:, USB2: and

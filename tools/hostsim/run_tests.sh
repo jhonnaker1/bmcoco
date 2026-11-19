@@ -406,6 +406,44 @@ else
     fail usb "dw0 was taken out of bmcoco.cfg"
 fi
 
+echo "Wi-Fi settings keep the key"
+# wpa_supplicant.conf with a key worked out from the password (64 hex
+# digits, not in quotes), then one with a password that has a " in it.
+# Menu (F12), Network (13 down), Wi-Fi Country (four down), Return twice:
+# the country is saved again, and the key must be written back as it was.
+wifi_keys() {
+    local f=120 k script="" keys="0x45"
+    for k in 1 2 3 4 5 6 7 8 9 10 11 12 13; do keys="$keys 0x51"; done
+    keys="$keys 0x28 0x51 0x51 0x51 0x51 0x28 0x28"
+    for k in $(echo $keys); do
+        script="$script$f key $k 1\n$((f + 1)) key $k 0\n"
+        f=$((f + 10))
+    done
+    printf '%s' "${script}${f} quit\n"
+}
+HEXKEY=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+mkdir -p "$OUT/wifihex" "$OUT/wifiquote"
+printf '# original\ncountry=GB\n\nnetwork={\n\tssid="home"\n\tpsk=%s\n\tkey_mgmt=WPA-PSK\n}\n' "$HEXKEY" > "$OUT/wifihex/wpa_supplicant.conf"
+printf '# original\ncountry=GB\n\nnetwork={\n\tssid="home"\n\tpsk="say "hi" 123"\n\tkey_mgmt=WPA-PSK\n}\n' > "$OUT/wifiquote/wpa_supplicant.conf"
+run wifihex 60 "$TESTROMS" "" "$(wifi_keys)"
+run wifiquote 60 "$TESTROMS" "" "$(wifi_keys)"
+for name in wifihex wifiquote; do
+    if grep -q '^# original' "$OUT/$name/wpa_supplicant.conf"; then
+        fail $name "wpa_supplicant.conf wasn't written again (the menu keys missed)"
+    fi
+done
+if grep -q "^	psk=$HEXKEY\$" "$OUT/wifihex/wpa_supplicant.conf" && \
+   grep -q '^country=GB' "$OUT/wifihex/wpa_supplicant.conf"; then
+    pass "wifihex: a 64-digit key is written back whole, without quotes"
+else
+    fail wifihex "the key was changed (see out/wifihex/wpa_supplicant.conf)"
+fi
+if grep -q '^	psk="say "hi" 123"$' "$OUT/wifiquote/wpa_supplicant.conf"; then
+    pass "wifiquote: a password with a \" in it is written back whole"
+else
+    fail wifiquote "the password was changed (see out/wifiquote/wpa_supplicant.conf)"
+fi
+
 echo "Missing ROMs are named by their files"
 run cp400 60 "$TESTROMS" "machine=cp400" '100 quit\n'
 check_log cp400 "ROMs not found: cp400bas.rom, cp400extbas.rom" "a CP-400 without its ROMs names them"
