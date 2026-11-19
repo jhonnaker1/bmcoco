@@ -32,6 +32,8 @@ available; see the [third-party](docs/THIRD_PARTY.md) acknowledgements.
 - USB keyboards; USB gamepads as the CoCo's analog joysticks (an analog stick
   gives the full 0-63 range); a USB mouse as the CoCo's mouse, or through
   Tandy's Hi-Res Joystick Interface; real joysticks wired to the GPIO header
+- USB sticks as well as the SD card (up to three): pulling one out ejects
+  the disks loaded from it
 - No shutdown needed: just switch it off (changed disks are written back
   within a few seconds)
 - A menu (F12) for everything: programs, disks, tapes, cartridges, machine,

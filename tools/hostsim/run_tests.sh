@@ -444,6 +444,19 @@ else
     fail wifiquote "the password was changed (see out/wifiquote/wpa_supplicant.conf)"
 fi
 
+echo "Swapping joystick ports"
+# Joystick 2 in the right port, none in the left (as XRoar keeps it, the
+# right holding the left's usual joystick). Menu, Joysticks (J), Swap Ports:
+# both ports are saved, the empty one as "none".
+mkdir -p "$OUT/joyswap"
+printf 'joy_right=joy1\njoy_left=none\n' > "$OUT/joyswap/bmcoco.cfg"
+run joyswap 60 "$TESTROMS" "" '120 key 0x45 1\n121 key 0x45 0\n140 type j\n160 key 0x28 1\n161 key 0x28 0\n180 key 0x51 1\n181 key 0x51 0\n200 key 0x51 1\n201 key 0x51 0\n220 key 0x28 1\n221 key 0x28 0\n300 quit\n'
+if grep -q "^joy_right=none" "$OUT/joyswap/bmcoco.cfg" && grep -q "^joy_left=joy1" "$OUT/joyswap/bmcoco.cfg"; then
+    pass "joyswap: the empty port is saved as none, the other as joy1"
+else
+    fail joyswap "bmcoco.cfg has $(grep '^joy_' "$OUT/joyswap/bmcoco.cfg" | tr '\n' ' ')"
+fi
+
 echo "Missing ROMs are named by their files"
 run cp400 60 "$TESTROMS" "machine=cp400" '100 quit\n'
 check_log cp400 "ROMs not found: cp400bas.rom, cp400extbas.rom" "a CP-400 without its ROMs names them"

@@ -5,7 +5,11 @@
   (as `wpa_passphrase` writes it): it was cut to 63 and put in quotes, so
   Wi-Fi stopped working. A password with a `"` in it was cut short too.
   Both are now written back as they were (found in BMApple2)
-- Tests: the Wi-Fi key and a password with a `"` kept
+- Fixed: Joysticks, Swap Ports with one port empty saved only the other,
+  so after a reboot the same joystick could be in both ports. The empty
+  one is now kept as `none`
+- Tests: the Wi-Fi key and a password with a `"` kept; swapping a
+  joystick with an empty port
 
 ## 0.5.12 – 2026-11-19
 

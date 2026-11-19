@@ -1078,10 +1078,11 @@ static void joysticks_menu(void)
 			struct joystick_config *l = joystick_config_by_id(state.joystick_id[1]);
 			ui_update_state(-1, ui_tag_joystick_port, 0, (void *) (intptr_t) state.joystick_id[1]);
 			ui_update_state(-1, ui_tag_joystick_port, 1, (void *) (intptr_t) (r ? r->id : 0));
-			if (l != NULL)
-				save_setting("joy_right", l->name);
-			if (r != NULL)
-				save_setting("joy_left", r->name);
+			/* An empty port is kept as "none" (XRoar plugs nothing in
+			   for a name it doesn't know); left out, the next boot would
+			   have XRoar's default there again. */
+			save_setting("joy_right", l != NULL ? l->name : "none");
+			save_setting("joy_left", r != NULL ? r->name : "none");
 			break;
 		}
 		case J_PAD1: choose_pad(0); break;

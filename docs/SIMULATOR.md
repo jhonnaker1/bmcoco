@@ -193,6 +193,7 @@ Useful settings, as environment variables:
 | `BMCOCO_SIM_CPU`             | Print how long each frame takes to emulate on the PC        |
 | `BMCOCO_IP`                  | Pretend the network is up with this address (from frame 100): needed to reach a DriveWire server or a BBS |
 | `BMCOCO_WIFI`                | Pretend Wi-Fi is running, with a few networks to choose from |
+| `BMCOCO_USB`                 | Have the first N USB sticks plugged in from the start: the folders `usb/`, `usb2/` and `usb3/` (the script's `usb` command plugs one in or pulls it out) |
 | `BMCOCO_REFRESH_LATER`       | Change the display's refresh rate to this at frame 30: a display slightly off its first measurement |
 
 ## On the Pi itself

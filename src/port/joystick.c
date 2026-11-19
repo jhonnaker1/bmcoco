@@ -13,8 +13,9 @@
  * By default Joystick 1 is plugged into the CoCo's right port (the one most
  * games use) and Joystick 2 into the left; the menu can change that.
  *
- * Gamepad buttons: A is the fire button, B the CoCo 3's second button, X
- * types Space and Y Enter, which most games want at some point.
+ * Gamepad buttons: A or X is the fire button, B or Y the CoCo 3's second
+ * button (pads number their buttons in many orders). With pad_keys=1, X
+ * types Space and Y Enter instead.
  *
  * This file is part of BMCoco, a bare metal Tandy Color Computer emulator for
  * the Raspberry Pi. See LICENSE for licensing details.
