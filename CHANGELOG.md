@@ -11,6 +11,10 @@
   and 44 on Wi-Fi
 - Fixed, from BMA800XL: on a Pi 5, sound could play at the wrong pitch
   when the display was already in the wanted mode, or didn't list it
+- Fixed, from BMA800XL: the web UI could fail to load a page in Safari,
+  which opens spare connections early: one that sent nothing was closed
+  after 2 seconds, just as Safari used it. Idle connections now stay open
+  until a request arrives (up to 30 seconds, 8 at a time)
 - The web UI's file view sorts by name, size or date (click the column,
   again to reverse it), from BMA800XL
 - Tests: a disk loaded from a USB stick through the drives page, and
