@@ -1211,6 +1211,7 @@ void bmcoco_idle(void)
 	if (now - last_sync_time >= 1.0) {
 		last_sync_time = now;
 		sync_files(FALSE);
+		bmcoco_check_usb_sticks();
 	}
 	if (request_power >= 0)
 		handle_requests();
@@ -1637,6 +1638,7 @@ void bmcoco_main(void)
 		if (now - last_second >= 1.0) {
 			last_second = now;
 			sync_files(FALSE);
+			bmcoco_check_usb_sticks();
 			show_network_address();
 			if (ao_corrections > 200 || ao_corrections < -200) {
 				LOG_DEBUG(1, "BMCoco: sound rate corrections %+d\n", ao_corrections);

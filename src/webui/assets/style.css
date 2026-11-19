@@ -27,7 +27,8 @@
  *   yellow, blue, red, buff, cyan, magenta, orange) as a colour bar, on the
  *   dark glass of a switched-off TV. The colour names are the ones the page
  *   has always used (the JS and HTML refer to them); they no longer describe
- *   the colours. 
+ *   the colours.
+ *   The drives under Files in the sidebar are from BMA800XL.
  */
 
 :root {
@@ -154,6 +155,11 @@ a:hover { text-decoration: underline; }
 .nav-item.disabled { opacity: 0.45; cursor: default; }
 .nav-item.disabled:hover { background: none; color: var(--muted); }
 .ni-ico { width: 18px; text-align: center; font-size: 15px; opacity: 0.9; }
+/* The drives under Files, while a USB stick is plugged in. */
+.nav-drives { display: flex; flex-direction: column; gap: 2px; }
+.nav-drives[hidden] { display: none; }
+.nav-drive { padding: 6px 12px 6px 41px; font-size: 13px; font-weight: 500; }
+.nav-drive.on { color: var(--gold-hi); background: rgba(255, 255, 255, 0.06); font-weight: 600; }
 .soon {
   margin-left: auto;
   font-size: 10px;
@@ -579,6 +585,8 @@ body.modal-open { overflow: hidden; }
   .sidebar { position: static; height: auto; overflow-y: visible; flex-direction: row; flex-wrap: wrap; align-items: center; border-right: none; border-bottom: 1px solid var(--border-soft); padding: 10px 12px; }
   .nav, .nav-bottom { flex-direction: row; flex-wrap: wrap; border: none; margin: 0; padding: 0; flex: 0; }
   .nav-item { width: auto; white-space: nowrap; }
+  .nav-drives { flex-direction: row; flex-wrap: wrap; }
+  .nav-drive { padding: 9px 12px; }
   .soon { display: none; }
   .side-drop { display: none; } /* the Upload… button covers narrow screens */
   .stripes { display: none; }

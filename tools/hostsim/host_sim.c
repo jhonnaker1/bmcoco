@@ -32,6 +32,8 @@
  *   <frame> pad <n> <bits>         set gamepad n to HOST_PAD_* bits
  *   <frame> axis <n> <x> <y>       gamepad n's analog stick (0-65535, -1 none)
  *   <frame> gpio <port> <bits>     GPIO joystick port to HOST_JOY_* bits
+ *   <frame> usb <1-3> <0|1>        pull out or plug in USB stick 1-3 (usb/,
+ *                                  usb2/, usb3/)
  *   <frame> mouse <dx> <dy> <buttons>  the mouse moves (buttons: bit 0 left)
  *   <frame> shot <file.ppm>        save the visible screen
  *   <frame> audio                  print audio statistics
@@ -464,6 +466,36 @@ int host_pad_axis(int pad, int axis)
 
 int host_gpio_joystick(int port) { return port >= 0 && port < 2 ? gpio[port] : 0; }
 
+/* The USB sticks are the folders usb/, usb2/ and usb3/ in the test's
+   directory. BMCOCO_USB=N has the first N plugged in from the start; the
+   script's "usb" command plugs one in or pulls it out. */
+static unsigned usb_stick[HOST_USB_STICKS];
+static unsigned usb_sticks;
+static int usb_started;
+
+static void usb_start(void)
+{
+	const char *env = getenv("BMCOCO_USB");
+	int n, count = env ? atoi(env) : 0;
+	if (usb_started)
+		return;
+	usb_started = 1;
+	for (n = 0; n < count && n < HOST_USB_STICKS; n++)
+		usb_stick[n] = ++usb_sticks;
+}
+
+unsigned host_usb_stick(int n)
+{
+	usb_start();
+	return n >= 0 && n < HOST_USB_STICKS ? usb_stick[n] : 0;
+}
+
+const char *host_usb_root(int n)
+{
+	static const char *const root[HOST_USB_STICKS] = {"usb/", "usb2/", "usb3/"};
+	return n >= 0 && n < HOST_USB_STICKS ? root[n] : NULL;
+}
+
 static int mouse_dx, mouse_dy, mouse_buttons, mouse_seen;
 
 int host_mouse_read(int *dx, int *dy, int *buttons)
@@ -603,6 +635,14 @@ static void run_script(void)
 			int port, bits;
 			sscanf(line + n, "%d %i", &port, &bits);
 			gpio[port & 1] = bits;
+		} else if (strcmp(cmd, "usb") == 0) {
+			int stick, in;
+			if (sscanf(line + n, "%d %d", &stick, &in) != 2 || stick < 1 || stick > HOST_USB_STICKS) {
+				fprintf(stderr, "[sim] invalid usb command: %s\n", line);
+				exit(1);
+			}
+			usb_start();
+			usb_stick[stick - 1] = in ? ++usb_sticks : 0;
 		} else if (strcmp(cmd, "run") == 0) {
 			emu_autostart_interrupt(line + n + 1);
 		} else if (strcmp(cmd, "shot") == 0) {

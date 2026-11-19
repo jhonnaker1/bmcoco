@@ -17,7 +17,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 //
-// Modified for BMCoco.
+// Modified for BMCoco. Paths may name a volume (a USB stick), and
+// sd_path_space_kb(), from BMA800XL.
 //
 // sd_fs_fatfs.c implements this on the Pi with FatFs; tools/sdcard/
 // sd_fs_posix.c implements it on a folder of a PC for the tests.
@@ -28,7 +29,8 @@
 //
 // File access on the SD card, for the code from BMC64: the web UI, the log
 // file and the Wi-Fi checks. Paths are absolute on the card
-// ("/bmcoco.cfg"); the card's volume is added here.
+// ("/bmcoco.cfg"); the card's volume is added here. A path that names its
+// own volume ("USB:/disks/x.dsk", a USB stick) is used as it is.
 //
 
 #ifndef BMC64_SD_FS_H
@@ -114,6 +116,8 @@ int sd_remove_tree(const char *path, unsigned *removed,
 
 // The card's size and free space, in KB.
 int sd_space_kb(uint32_t *total_kb, uint32_t *free_kb);
+// The same for the volume holding PATH ("/" the card, "USB:/" a stick).
+int sd_path_space_kb(const char *path, uint32_t *total_kb, uint32_t *free_kb);
 
 // ---- Shorter forms (sd_fs_file.c) ----
 

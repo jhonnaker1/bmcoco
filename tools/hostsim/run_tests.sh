@@ -387,6 +387,25 @@ else
     fail dwmenu "dw0 not in bmcoco.cfg"
 fi
 
+echo "USB sticks"
+# A stick (the folder usb/) with a disk image, and DriveWire drive 0 on it
+# and drive 1 on the card, from bmcoco.cfg. Menu, Run a Program, up to
+# <Drives>, down to USB:, the image (a.dsk, first): it is loaded from the stick. Pulling
+# the stick out ejects it and DriveWire drive 0, not drive 1.
+mkdir -p "$OUT/usb/usb" "$OUT/usb/disks"
+head -c 161280 /dev/zero > "$OUT/usb/usb/a.dsk"
+head -c 161280 /dev/zero > "$OUT/usb/usb/dw.dsk"
+head -c 161280 /dev/zero > "$OUT/usb/disks/sd.dsk"
+printf 'dw0=usb/dw.dsk\ndw1=disks/sd.dsk\n' > "$OUT/usb/bmcoco.cfg"
+BMCOCO_USB=1 run usb 60 "$TESTROMS" "" '120 key 0x45 1\n121 key 0x45 0\n140 key 0x28 1\n141 key 0x28 0\n160 key 0x52 1\n161 key 0x52 0\n180 key 0x28 1\n181 key 0x28 0\n200 key 0x51 1\n201 key 0x51 0\n220 key 0x28 1\n221 key 0x28 0\n240 shot stick.ppm\n241 key 0x28 1\n242 key 0x28 0\n400 usb 1 0\n500 quit\n'
+check_log usb "usb/a.dsk: reading" "the image is loaded from the stick"
+check_log usb "USB stick usb/ removed: 2 ejected" "the disk from the stick and DriveWire drive 0 ejected, drive 1 kept"
+if grep -q "^dw0=usb/dw.dsk" "$OUT/usb/bmcoco.cfg"; then
+    pass "usb: bmcoco.cfg keeps the stick's image for the next boot"
+else
+    fail usb "dw0 was taken out of bmcoco.cfg"
+fi
+
 echo "Missing ROMs are named by their files"
 run cp400 60 "$TESTROMS" "machine=cp400" '100 quit\n'
 check_log cp400 "ROMs not found: cp400bas.rom, cp400extbas.rom" "a CP-400 without its ROMs names them"

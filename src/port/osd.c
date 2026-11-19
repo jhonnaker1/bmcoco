@@ -833,6 +833,73 @@ static void free_entries(struct entry *list, int n)
 	free(list);
 }
 
+/* ---- Drives ---------------------------------------------------------------- */
+
+/* While a USB stick is in, each folder has a <Drives> entry, for a page
+   listing the SD card and the sticks; ".." at a drive's top folder goes
+   there too. DIR is set to DRIVES_PAGE, which no path can be, for it. */
+#define DRIVES_PAGE "<drives>"
+
+/* The same folder, ignoring case and slashes at the end. */
+static int same_dir(const char *a, const char *b)
+{
+	size_t la = strlen(a), lb = strlen(b);
+	while (la > 1 && a[la - 1] == '/')
+		la--;
+	while (lb > 1 && b[lb - 1] == '/')
+		lb--;
+	return la == lb && strncasecmp(a, b, la) == 0;
+}
+
+static int any_usb_stick(void)
+{
+	int n;
+	for (n = 0; n < HOST_USB_STICKS; n++)
+		if (host_usb_stick(n) != 0)
+			return TRUE;
+	return FALSE;
+}
+
+/* Drive 0 is the SD card, 1 to 3 the sticks. */
+static const char *const drive_label[HOST_USB_STICKS + 1] = {"SD:", "USB:", "USB2:", "USB3:"};
+
+static const char *drive_dir(int drive)
+{
+	return drive == 0 ? bmcoco_sd_root() : host_usb_root(drive - 1);
+}
+
+/* The drive whose top folder DIR is, or -1. */
+static int root_drive(const char *dir)
+{
+	int n;
+	if (same_dir(dir, bmcoco_sd_root()) || same_dir(dir, "/") || same_dir(dir, "SD:/"))
+		return 0;
+	for (n = 0; n < HOST_USB_STICKS; n++)
+		if (same_dir(dir, host_usb_root(n)))
+			return n + 1;
+	return -1;
+}
+
+/* The page listing the drives. Returns FALSE if Esc was pressed. */
+static int browse_drives(const char *title, char *dir, size_t dir_size, const char *came_from)
+{
+	struct osd_item items[HOST_USB_STICKS + 2];
+	int n = 0, i, sel = 1, chosen;
+	items[n++] = (struct osd_item){"Drives", NULL, OSD_ITEM_LABEL, -2};
+	for (i = 0; i <= HOST_USB_STICKS; i++) {
+		if (i > 0 && host_usb_stick(i - 1) == 0)
+			continue;
+		if (strcmp(drive_label[i], came_from) == 0)
+			sel = n;
+		items[n++] = (struct osd_item){drive_label[i], i == 0 ? "SD card" : "USB stick", 0, i};
+	}
+	chosen = osd_menu(title, items, n, &sel);
+	if (chosen < 0)
+		return FALSE;
+	snprintf(dir, dir_size, "%s", drive_dir(chosen));
+	return TRUE;
+}
+
 int osd_browse(const char *title, char *dir, size_t dir_size,
                const char *const exts[], char *path, size_t path_size)
 {
@@ -842,54 +909,80 @@ int osd_browse(const char *title, char *dir, size_t dir_size,
 		struct entry *list = NULL;
 		struct osd_item *items;
 		char heading[OSD_COLS * 2];
-		int n = read_dir(dir, exts, &list);
-		int i, sel = 1, chosen;
+		int n, i, first, sel, chosen, drives = any_usb_stick();
 
+		if (strcmp(dir, DRIVES_PAGE) == 0) {
+			if (!drives)
+				snprintf(dir, dir_size, "%s", bmcoco_sd_root());
+			else if (!browse_drives(title, dir, dir_size, came_from))
+				return 0;
+			came_from[0] = '\0';
+			continue;
+		}
+
+		n = read_dir(dir, exts, &list);
 		if (n < 0) {
-			if (strcmp(dir, "/") != 0) {
-				/* Gone (the card changed): start again at the top. */
-				snprintf(dir, dir_size, "/");
+			if (!same_dir(dir, bmcoco_sd_root())) {
+				/* Gone (the card changed or the stick was pulled out):
+				   start again at the top of the card. */
+				snprintf(dir, dir_size, "%s", bmcoco_sd_root());
 				continue;
 			}
 			osd_message("Cannot read the SD card.", TRUE);
 			return 0;
 		}
 
-		/* The directory, then "..", then the entries. */
-		items = calloc(n + 2, sizeof(*items));
+		/* The folder, "..", <Drives> while a stick is in, then the entries. */
+		items = calloc(n + 3, sizeof(*items));
 		if (items == NULL) {
 			free_entries(list, n);
 			return 0;
 		}
-		snprintf(heading, sizeof(heading), "%s", dir);
-		items[0].text = heading;
-		items[0].flags = OSD_ITEM_LABEL;
-		items[0].id = -2;
-		items[1].text = "..";
-		items[1].value = "<DIR>";
-		items[1].id = -3;
+		if (dir[0] == '/' && strcmp(bmcoco_sd_root(), "/") == 0 && drives)
+			snprintf(heading, sizeof(heading), "SD:%s", dir);
+		else
+			snprintf(heading, sizeof(heading), "%s", dir);
+		first = 0;
+		items[first++] = (struct osd_item){heading, NULL, OSD_ITEM_LABEL, -2};
+		items[first++] = (struct osd_item){"..", "<DIR>", 0, -3};
+		if (drives)
+			items[first++] = (struct osd_item){"<Drives>", NULL, 0, -4};
+		sel = 1;
 		for (i = 0; i < n; i++) {
-			items[i + 2].text = list[i].name;
-			items[i + 2].value = list[i].is_dir ? "<DIR>" : NULL;
-			items[i + 2].id = i;
+			items[i + first].text = list[i].name;
+			items[i + first].value = list[i].is_dir ? "<DIR>" : NULL;
+			items[i + first].id = i;
 			if (came_from[0] != '\0' && strcmp(list[i].name, came_from) == 0)
-				sel = i + 2;
+				sel = i + first;
 		}
-		if (n > 0 && came_from[0] == '\0')
-			sel = 2;
+		if (n > 0 && sel == 1 && came_from[0] == '\0')
+			sel = first;
 
-		chosen = osd_menu(title, items, n + 2, &sel);
+		chosen = osd_menu(title, items, n + first, &sel);
 		free(items);
 
 		if (chosen == -1) {
 			free_entries(list, n);
 			return 0;
 		}
+		if (chosen == -4) {
+			int drive = root_drive(dir);
+			snprintf(came_from, sizeof(came_from), "%s", drive >= 0 ? drive_label[drive] : "");
+			snprintf(dir, dir_size, "%s", DRIVES_PAGE);
+			free_entries(list, n);
+			continue;
+		}
 		if (chosen == -3) {
 			char *slash;
 			size_t len = strlen(dir);
-			if (strcmp(dir, "/") == 0) {
-				free_entries(list, n);
+			int drive = root_drive(dir);
+			free_entries(list, n);
+			if (drive >= 0) {
+				/* The top of a drive: the drives, if there is a stick. */
+				if (drives) {
+					snprintf(came_from, sizeof(came_from), "%s", drive_label[drive]);
+					snprintf(dir, dir_size, "%s", DRIVES_PAGE);
+				}
 				continue;
 			}
 			while (len > 1 && dir[len - 1] == '/')
@@ -897,7 +990,10 @@ int osd_browse(const char *title, char *dir, size_t dir_size,
 			slash = strrchr(dir, '/');
 			snprintf(came_from, sizeof(came_from), "%s", slash ? slash + 1 : "");
 			parent_dir(dir);
-			free_entries(list, n);
+			/* "USB:/games" goes up to "USB:/", not "USB:". */
+			len = strlen(dir);
+			if (len > 0 && dir[len - 1] == ':' && len + 1 < dir_size)
+				strcat(dir, "/");
 			continue;
 		}
 		if (list[chosen].is_dir) {

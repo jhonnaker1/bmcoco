@@ -1,3 +1,21 @@
+## 0.5.12 – unreleased
+
+- USB sticks, from BMA800XL: up to three FAT sticks, as USB:, USB2: and
+  USB3:. The menu's file browser has a <Drives> entry while one is in, for
+  a page listing the card and the sticks; the web UI's Files page has a
+  button for each. Pulling a stick out ejects the floppy disks, hard
+  disks, DriveWire disks and tape loaded from it
+- Fixed, from BMA800XL: web UI uploads of several MB could stop with
+  "upload truncated". The TCP receive window is now Circle's 10 segments
+  on Ethernet (the Pi 3's USB Ethernet drops the end of larger bursts)
+  and 44 on Wi-Fi
+- Fixed, from BMA800XL: on a Pi 5, sound could play at the wrong pitch
+  when the display was already in the wanted mode, or didn't list it
+- The web UI's file view sorts by name, size or date (click the column,
+  again to reverse it), from BMA800XL
+- Tests: a disk loaded from a USB stick through the drives page, and
+  ejected with DriveWire drive 0 when the stick is pulled out
+
 ## 0.5.11 – 2026-11-06
 
 - Memory offers 4K only on a CoCo 1 (XRoar's *Tandy CoCo*, with the

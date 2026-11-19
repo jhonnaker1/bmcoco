@@ -18,7 +18,8 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 //
 // Modified for BMA800XL from BMC64's src/webui/assets/js/dashboard.js:
-// BMA800XL's name and version, without profiles.
+// BMA800XL's name and version, without profiles; a storage bar for each
+// USB stick.
 //
 // Modified for BMCoco.
 //
@@ -161,19 +162,36 @@ export function startStatusPolling() {
   pollStatus();
 }
 
+// A storage bar for the SD card and each USB stick plugged in.
 export async function refreshVolumes() {
+  const box = $("d-storage");
+  let volumes;
   try {
-    const v = (await api.getVolumes()).volumes || [];
-    const sd = v[0];
-    if (!sd || !sd.total_kb) { $("d-storage").hidden = true; return; }
-    const usedKb = sd.total_kb - sd.free_kb;
-    const pct = Math.min(100, Math.round((usedKb / sd.total_kb) * 100));
-    $("d-storage-bar").style.width = pct + "%";
-    $("d-storage-txt").textContent =
-      fmtKB(sd.free_kb) + " free of " + fmtKB(sd.total_kb);
-    $("d-storage").hidden = false;
+    volumes = (await api.getVolumes()).volumes || [];
   } catch (e) {
-    $("d-storage").hidden = true;
+    volumes = [];
+  }
+  box.textContent = "";
+  for (const v of volumes) {
+    if (!v.total_kb) continue;
+    const meter = document.createElement("div");
+    meter.className = "meter";
+    const top = document.createElement("div");
+    top.className = "meter-top";
+    const label = document.createElement("span");
+    label.textContent = (v.kind === "sdcard" ? "SD" : v.id) + " storage";
+    const text = document.createElement("span");
+    text.textContent = fmtKB(v.free_kb) + " free of " + fmtKB(v.total_kb);
+    top.append(label, text);
+    const bar = document.createElement("div");
+    bar.className = "bar";
+    const fill = document.createElement("div");
+    fill.className = "bar-fill";
+    const pct = Math.min(100, Math.round(((v.total_kb - v.free_kb) / v.total_kb) * 100));
+    fill.style.width = pct + "%";
+    bar.appendChild(fill);
+    meter.append(top, bar);
+    box.appendChild(meter);
   }
 }
 

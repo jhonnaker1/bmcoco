@@ -118,5 +118,7 @@ unsigned cartbus_generation(void);
 void bmcoco_menu(void);
 /* Starts following XRoar's state; from the user interface module. */
 void bmcoco_menu_attach(void);
+/* Ejects the media on a USB stick pulled out; called once a second. */
+void bmcoco_check_usb_sticks(void);
 
 #endif /* BMCOCO_PORT_H_ */

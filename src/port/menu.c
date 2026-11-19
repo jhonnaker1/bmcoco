@@ -35,6 +35,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 
 #include "slist.h"
 
@@ -51,6 +52,7 @@
 #include "romlist.h"
 #include "xalloc.h"
 #include "xconfig.h"
+#include "logging.h"
 #include "xroar.h"
 
 #include "../host.h"
@@ -129,6 +131,66 @@ void bmcoco_menu_attach(void)
 	state.tape_fast = 1;
 	for (i = 0; i < sizeof(tags) / sizeof(tags[0]); i++)
 		ui_messenger_join_group(client, tags[i], MESSENGER_NOTIFY_DELEGATE(state_notify, NULL));
+}
+
+/* ---- USB sticks ---------------------------------------------------------- */
+
+static struct vdisk *disk_in(int drive);
+
+/* The sticks the media were loaded from, as host_usb_stick() numbers them. */
+static unsigned usb_seen[HOST_USB_STICKS];
+
+static int on_stick(int n, const char *path)
+{
+	const char *root = host_usb_root(n);
+	return path != NULL && root != NULL && strncasecmp(path, root, strlen(root)) == 0;
+}
+
+/* Called once a second. When a stick is pulled out (or swapped), the
+   floppy disks, hard disks, DriveWire disks and tape loaded from it are
+   ejected, so nothing is written to whatever stick comes next. A floppy's
+   changes not yet saved (within 2 seconds) have nowhere to go, and are
+   dropped. Cartridges are in memory and stay. The choices saved in
+   bmcoco.cfg are kept, for the next boot with the stick in. */
+void bmcoco_check_usb_sticks(void)
+{
+	int n, d, ejected;
+	for (n = 0; n < HOST_USB_STICKS; n++) {
+		unsigned stick = host_usb_stick(n);
+		if (stick == usb_seen[n])
+			continue;
+		ejected = 0;
+		if (usb_seen[n] != 0) {
+			for (d = 0; d < VDRIVE_MAX_DRIVES; d++) {
+				struct vdisk *disk = disk_in(d);
+				if (disk != NULL && on_stick(n, disk->filename)) {
+					disk->dirty = 0;
+					xroar_eject_disk(d);
+					ejected++;
+				}
+			}
+			for (d = 0; d < 2; d++) {
+				if (state.hd_name[d][0] && on_stick(n, state.hd_name[d])) {
+					xroar_insert_hd_file(d, NULL);
+					ejected++;
+				}
+			}
+			for (d = 0; d < DWSERVER_DRIVES; d++) {
+				if (on_stick(n, dwserver_drive(d))) {
+					dwserver_set_drive(d, NULL);
+					ejected++;
+				}
+			}
+			if (state.tape_name[0] && on_stick(n, state.tape_name)) {
+				xroar_eject_input_tape();
+				ejected++;
+			}
+			LOG_PRINT("BMCoco: USB stick %s removed: %d ejected\n", host_usb_root(n), ejected);
+			if (ejected)
+				osd_notify("USB stick removed: its disks ejected");
+		}
+		usb_seen[n] = stick;
+	}
 }
 
 /* ---- Settings ---------------------------------------------------------- */
