@@ -265,11 +265,13 @@ bool Display::MatchRate(double fps, unsigned audio_fs, unsigned lines) {
     CLogger::Get()->Write(FromDisplay, LogNotice,
                           "No %ux%u mode at %.2f Hz the display lists; keeping %.2f Hz",
                           current.h_active, current.v_active, fps, current.Refresh());
+    m_ModeSetter.SetAudioClock(current, audio_fs);
     return false;
   }
   if (wanted.vic == current.vic &&
       (wanted.pixel_hz > current.pixel_hz ? wanted.pixel_hz - current.pixel_hz
                                           : current.pixel_hz - wanted.pixel_hz) < 1000) {
+    m_ModeSetter.SetAudioClock(current, audio_fs);
     return false;
   }
   m_ModeSetter.Set(m_Hvs, wanted, audio_fs, Reinstall, this);

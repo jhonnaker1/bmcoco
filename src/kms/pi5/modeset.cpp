@@ -447,14 +447,25 @@ bool ModeSetter::Apply(Hvs &hvs, const Timing &t, bool hdmi_sink, unsigned audio
   }
   ok = RecenterFifo() && ok;
 
-  // HDMI sound's clock regeneration for the new TMDS rate (external CTS).
-  uint32_t crp = Rd(m_Core + hdmi::CrpCfg);
-  if (audio_fs != 0 && (crp & Bit(24))) {
-    uint32_t cts = AudioCts(t.pixel_hz, crp & 0xFFFFF, audio_fs);
-    Wr(m_Core + hdmi::Cts0, cts);
-    Wr(m_Core + hdmi::Cts1, cts);
-  }
+  // HDMI sound's clock regeneration for the new TMDS rate.
+  SetAudioClock(t, audio_fs);
   return ok;
+}
+
+void ModeSetter::SetAudioClock(const Timing &t, unsigned audio_fs) {
+  // Only once the sound has set its N (external CTS).
+  uint32_t crp = Rd(m_Core + hdmi::CrpCfg);
+  if (audio_fs == 0 || !(crp & Bit(24))) {
+    return;
+  }
+  uint32_t cts = AudioCts(t.pixel_hz, crp & 0xFFFFF, audio_fs);
+  uint32_t was = Rd(m_Core + hdmi::Cts0);
+  Wr(m_Core + hdmi::Cts0, cts);
+  Wr(m_Core + hdmi::Cts1, cts);
+  if (cts != was) {
+    CLogger::Get()->Write(FromModeSet, LogNotice, "HDMI sound: CTS %u (was %u) for %u kHz",
+                          cts, was, (unsigned)(t.pixel_hz / 1000));
+  }
 }
 
 } // namespace kms
