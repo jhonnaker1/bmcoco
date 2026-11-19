@@ -33,7 +33,6 @@ XROAR_SRCS = \
 	cart.c \
 	clock.c \
 	colourspace.c \
-	crclist.c \
 	crc16.c \
 	crc32.c \
 	debug.c \
@@ -67,6 +66,7 @@ XROAR_SRCS = \
 	sndfile_compat.c \
 	sound.c \
 	symtab.c \
+	trap.c \
 	tape.c \
 	tape_cas.c \
 	tape_sndfile.c \
@@ -104,6 +104,8 @@ XROAR_SRCS = \
 	gmc.c \
 	ide.c \
 	idecart.c \
+	cocosdc.c \
+	bsdos/bsdos.c \
 	mooh.c \
 	mpi.c \
 	nx32.c \

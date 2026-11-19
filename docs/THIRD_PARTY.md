@@ -6,9 +6,9 @@ The original copyright, license, and attribution notices supplied with these com
 
 ## XRoar
 
-BMCoco incorporates [XRoar](https://www.6809.org.uk/xroar/), the Dragon and Tandy Colour Computer emulator by Ciaran Anscomb, version 1.12.1, under the GNU General Public License version 3. Its portalib library is under the GNU Lesser General Public License version 3.
+BMCoco incorporates [XRoar](https://www.6809.org.uk/xroar/), the Dragon and Tandy Colour Computer emulator by Ciaran Anscomb, version 1.13.1, under the GNU General Public License version 3. Its portalib library is under the GNU Lesser General Public License version 3.
 
-See `third_party/xroar/` (from `https://www.6809.org.uk/git/xroar.git`, tag `1.12.1`) for the source and its accompanying copyright and license information. The CoCo 3 character set BMCoco's menu is drawn with comes from XRoar (`src/tcc1014/font-gime.c`).
+See `third_party/xroar/` (from `https://www.6809.org.uk/git/xroar.git`, tag `1.13.1`) for the source and its accompanying copyright and license information. The CoCo 3 character set BMCoco's menu is drawn with comes from XRoar (`src/tcc1014/font-gime.c`).
 
 Its notice is in [`sdcard/licenses/xroar.txt`](../sdcard/licenses/xroar.txt); the GNU General Public License version 3 is [`LICENSE`](../LICENSE) and the GNU Lesser General Public License version 3 [`sdcard/licenses/LGPL-3.0.txt`](../sdcard/licenses/LGPL-3.0.txt).
 

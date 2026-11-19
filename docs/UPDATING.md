@@ -29,7 +29,7 @@ To move to a new release:
    ```
    cd third_party/xroar
    git fetch --tags
-   git checkout 1.13           # the new release tag
+   git checkout 1.14           # the new release tag
    cd ../..
    ```
 
@@ -37,7 +37,7 @@ To move to a new release:
 
    ```
    cd third_party/xroar
-   git diff 1.12.1 1.13 --stat -- src/Makefile.am portalib/Makefile.am configure.ac
+   git diff 1.13.1 1.14 --stat -- src/Makefile.am portalib/Makefile.am configure.ac
    ```
 
    - Sources added to or removed from `xroar_SOURCES` (or the machine,
@@ -62,7 +62,7 @@ To move to a new release:
 
    ```
    git add third_party/xroar src/port
-   git commit -m "Update XRoar to 1.13"
+   git commit -m "Update XRoar to 1.14"
    ```
 
 ## circle-stdlib (Circle and newlib)

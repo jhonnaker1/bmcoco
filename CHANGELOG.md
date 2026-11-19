@@ -5,6 +5,10 @@
   a page listing the card and the sticks; the web UI's Files page has a
   button for each. Pulling a stick out ejects the floppy disks, hard
   disks, DriveWire disks and tape loaded from it
+- XRoar 1.13.1 (was 1.12.1): CoCo 3 high-resolution and 16-byte
+  VDG-compatible GIME modes drawn correctly, no old picture left after a
+  60 Hz to 50 Hz switch, 6309 timing fixes, the 6809's TSTA and TSTB
+  access memory as the real chip does, iMMUnity fixes
 - Fixed, from BMA800XL: web UI uploads of several MB could stop with
   "upload truncated". The TCP receive window is now Circle's 10 segments
   on Ethernet (the Pi 3's USB Ethernet drops the end of larger bursts)
