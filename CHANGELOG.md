@@ -1,4 +1,4 @@
-## 0.5.14 – unreleased
+## 0.5.14 – 2026-11-20
 
 - A FujiNet can be the DriveWire server, through the Becker port (*DriveWire*,
   *Server*, *Another Computer*): FujiNet-PC on a computer, or a FujiNet
