@@ -310,9 +310,10 @@ card, and it has its own network, clock and printer devices for CoCo
 programs written for it. BMCoco connects to it as to any server on another
 computer (*DriveWire*, *Server*, *Another Computer*, its address and port
 65504), through the Becker port: *RS-DOS with becker port* in *Cartridge*,
-with HDB-DOS for DriveWire (`hdbdw3bck.rom`; `hdbdw3bc3.rom` on a CoCo 3)
-in `roms`. Typing `DOS` (or turning on) then boots FujiNet's CONFIG from
-its drive 0.
+with HDB-DOS for DriveWire in `roms` as `hdbdw3bck.rom` (the only name
+XRoar looks for: on a CoCo 3, HDB-DOS's CoCo 3 build, `hdbdw3bc3.rom`,
+can go in under that name, though the CoCo 1 and 2 build works there
+too). Typing `DOS` then boots FujiNet's CONFIG from its drive 0.
 
 FujiNet must have DriveWire over the network turned on (*Enable Becker
 Port* in its web page; `[BOIP]` in its `fnconfig.ini`), on port 65504:
