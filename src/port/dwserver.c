@@ -673,6 +673,24 @@ int dwserver_command_length(const uint8_t *in, int in_len, const uint8_t *open_c
 	}
 }
 
+int dwserver_known_opcode(uint8_t op)
+{
+	if (op >= OP_FASTWRITE && op <= OP_FASTWRITE + 15)
+		return 1;
+	switch (op) {
+	case OP_NOP: case OP_NAMEOBJ_MOUNT: case OP_NAMEOBJ_CREATE: case OP_TIME:
+	case OP_SERREAD: case OP_SERGETSTAT: case OP_SERINIT: case OP_PRINTFLUSH:
+	case OP_GETSTAT: case OP_INIT: case OP_PRINT: case OP_READ: case OP_SETSTAT:
+	case OP_TERM: case OP_WRITE: case OP_DWINIT: case OP_SERREADM: case OP_SERWRITEM:
+	case OP_REREAD: case OP_REWRITE: case OP_SERWRITE: case OP_SERSETSTAT:
+	case OP_SERTERM: case OP_READEX: case OP_REREADEX: case OP_RESET3: case OP_RESET2:
+	case OP_RESET1:
+		return 1;
+	default:
+		return 0;
+	}
+}
+
 static void run_command(void)
 {
 	uint8_t data[SECTOR];

@@ -25,6 +25,10 @@ uint8_t dwserver_read(void);
    (only the first three are looked at), and the virtual channels open
    (256 flags): DriveWire's commands are as long as their first bytes say. */
 int dwserver_command_length(const uint8_t *in, int in_len, const uint8_t *open_channels);
+/* TRUE if OP is one of DriveWire 4's opcodes, whose lengths
+   dwserver_command_length() knows. FujiNet adds its own ($E2 to $E5),
+   whose packets don't say how long they are. */
+int dwserver_known_opcode(uint8_t op);
 
 /* Puts the disk image PATH in DRIVE (0 to 3), or empties it (NULL or "").
    Returns 0 if the image can't be opened. */

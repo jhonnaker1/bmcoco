@@ -302,6 +302,32 @@ address, in the background (the CoCo keeps running), and tries again every
 address of `127.0.0.1` or `localhost`, as in an `xroar.conf` from a PC,
 means the built-in server: nothing else can listen there on the Pi.
 
+### FujiNet
+
+A [FujiNet](https://fujinet.online/) can be the DriveWire server: its CONFIG
+program mounts disks from TNFS servers on the internet and from its SD
+card, and it has its own network, clock and printer devices for CoCo
+programs written for it. BMCoco connects to it as to any server on another
+computer (*DriveWire*, *Server*, *Another Computer*, its address and port
+65504), through the Becker port: *RS-DOS with becker port* in *Cartridge*,
+with HDB-DOS for DriveWire (`hdbdw3bck.rom`; `hdbdw3bc3.rom` on a CoCo 3)
+in `roms`. Typing `DOS` (or turning on) then boots FujiNet's CONFIG from
+its drive 0.
+
+FujiNet must have DriveWire over the network turned on (*Enable Becker
+Port* in its web page; `[BOIP]` in its `fnconfig.ini`), on port 65504:
+
+- **FujiNet-PC**, FujiNet's program for a PC, built for the CoCo, on a
+  computer on the same network: it has it on, but listens only to its own
+  computer (`localhost`). Set its host to `*` (`host=*` under `[BOIP]`)
+  for the Pi to reach it.
+- **A FujiNet device for the CoCo**, on Wi-Fi: turn on *Enable Becker Port*
+  and reboot it; it then listens on all its addresses.
+
+The disk light at the bottom left shows FujiNet's disk reads and writes as
+it does any DriveWire server's (`DW0 LSN 126`); FujiNet's own commands
+aren't shown.
+
 ## The RS-232 Pak and calling BBSes
 
 BMCoco can add Tandy's RS-232 Pak, with a virtual modem on its cable, for

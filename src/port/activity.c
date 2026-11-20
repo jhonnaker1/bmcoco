@@ -20,7 +20,11 @@
  * write command gives the drive and sector, and the server's reply to it
  * its error. The commands are followed with the server's own rules for
  * their lengths (dwserver_command_length()), so that a sector written,
- * say, isn't taken for commands.
+ * say, isn't taken for commands. A FujiNet (as the server, on another
+ * computer) adds commands of its own ($E2 to $E5) whose length nothing in
+ * them gives: after one, or anything else not DriveWire's, the bytes are
+ * let go by until the server has answered, and the CoCo's next byte starts
+ * a command again.
  *
  * This file is part of BMCoco, a bare metal Tandy Color Computer emulator for
  * the Raspberry Pi. See LICENSE for licensing details.
@@ -247,6 +251,7 @@ static struct {
 	int len;                /* its bytes so far */
 	int checksum;           /* bytes of READEX's checksum to come */
 	int reply;              /* the server's next byte is a command's error */
+	int lost;               /* in a command not known: wait for an answer */
 	uint8_t open[256];      /* virtual channels open */
 } dws;
 
@@ -255,6 +260,7 @@ void activity_dw_reset(void)
 	dws.len = 0;
 	dws.checksum = 0;
 	dws.reply = 0;
+	dws.lost = 0;
 	memset(dws.open, 0, sizeof dws.open);
 }
 
@@ -305,6 +311,12 @@ void activity_dw_write(uint8_t byte)
 		return;
 	}
 	dws.reply = 0;
+	if (dws.lost)
+		return;
+	if (dws.len == 0 && !dwserver_known_opcode(byte)) {
+		dws.lost = 1;
+		return;
+	}
 	if (dws.len < (int) sizeof dws.in)
 		dws.in[dws.len] = byte;
 	dws.len++;
@@ -318,7 +330,16 @@ void activity_dw_write(uint8_t byte)
 void activity_dw_read(uint8_t byte)
 {
 	const char *error;
-	if (!enabled || !dws.reply)
+	if (!enabled)
+		return;
+	if (dws.lost) {
+		/* The server answered the command not known: the CoCo's
+		   next byte starts another. */
+		dws.lost = 0;
+		dws.len = 0;
+		return;
+	}
+	if (!dws.reply)
 		return;
 	dws.reply = 0;
 	switch (byte) {

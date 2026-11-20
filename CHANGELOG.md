@@ -1,3 +1,20 @@
+## 0.5.14 – unreleased
+
+- A FujiNet can be the DriveWire server, through the Becker port (*DriveWire*,
+  *Server*, *Another Computer*): FujiNet-PC on a computer, or a FujiNet
+  device, with DriveWire over the network ("bus over IP") on. The User Guide
+  says how. Tried with FujiNet-PC on a Mac: HDB-DOS boots FujiNet's CONFIG,
+  which lists a TNFS server's disks, and sectors read are FujiNet's disk
+  image's
+- Fixed: the disk light misread FujiNet's own DriveWire commands ($E2 to
+  $E5), whose length nothing in them gives: their bytes could be taken for
+  a disk read, and its "error" shown in red. After a command that isn't
+  DriveWire's, the light now waits for the server's answer before reading
+  commands again
+- Tests: a stand-in FujiNet: its commands and a READEX reach it, and the
+  light shows the sector read with no error. The Color BASIC test with real
+  ROMs looks for XRoar 1.13.1's log line (1.12.1's is gone)
+
 ## 0.5.13 – 2026-11-19
 
 - Fixed: changing a Wi-Fi setting in the menu (the network, password or

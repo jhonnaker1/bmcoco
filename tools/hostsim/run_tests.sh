@@ -487,7 +487,7 @@ fi
 if [ -n "${BMCOCO_ROMS:-}" ]; then
     echo "Color BASIC (real ROMs from $BMCOCO_ROMS)"
     run basic 60 "$BMCOCO_ROMS" "" '200 shot boot.ppm\n210 type PRINT "HELLO"\\n\n400 shot hello.ppm\n401 type SOUND 100,30\\n\n600 audio\n601 quit\n'
-    check_log basic "Colour BASIC CRC32 valid" "Color BASIC ROM found"
+    check_log basic "Slot +[0-9]: Colour BASIC" "Color BASIC ROM found"
     check_log basic "Disk Extended Colour BASIC" "Disk BASIC ROM found"
     differ basic boot hello
     check_audio basic
@@ -767,6 +767,76 @@ EOF
             fail $name "frames presented: $line"
         fi
     }
+    echo "FujiNet as the DriveWire server (a stand-in FujiNet)"
+    # A stand-in HDB-DOS (make_fujinet_test.py) asks the server, through the
+    # IDE interface's Becker port, FujiNet's DEVICE_READY, then a FujiNet
+    # command whose bytes look like DriveWire's READ (answered $F6, which as
+    # READ's error is "no disk"), then reads sector 7 with READEX. FujiNet's
+    # own commands don't give their length: the activity light must let
+    # them go by, and show DW0 LSN 7 without an error.
+    mkdir -p "$OUT/fujinet/roms"
+    for f in "$BMCOCO_ROMS"/*; do ln -s "$f" "$OUT/fujinet/roms/" 2>/dev/null; done
+    rm -f "$OUT/fujinet/roms/hdblba.rom"   # a link to the ROM folder's, if it has one
+    python3 "$HERE/make_fujinet_test.py" "$OUT/fujinet/roms" --lsn 7 > /dev/null || exit 1
+    printf 'machine coco2bus\nmachine-cart ide\n' > "$OUT/fujinet/xroar.conf"
+    python3 - "$OUT/fujinet/server.log" <<'EOF' &
+import socket, sys
+log = open(sys.argv[1], 'w')
+s = socket.socket()
+s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+s.bind(('127.0.0.1', 65512))
+s.listen(1)
+s.settimeout(30)
+c, _ = s.accept()
+c.settimeout(30)
+def get(n):
+    data = b''
+    while len(data) < n:
+        more = c.recv(n - len(data))
+        if not more:
+            raise EOFError
+        data += more
+    return data
+try:
+    while True:
+        op = get(1)[0]
+        if op == 0xE2:
+            cmd = get(1)[0]
+            if cmd == 0x00:
+                c.sendall(b'\x01')
+                log.write('ready\n')
+            elif cmd == 0x52:
+                get(4)
+                c.sendall(b'\xf6')
+                log.write('fuji 52\n')
+        elif op == 0xD2:
+            lsn = int.from_bytes(get(4)[1:], 'big')
+            sector = bytes((lsn + i) & 0xff for i in range(256))
+            c.sendall(sector)
+            sum_ = int.from_bytes(get(2), 'big')
+            ok = sum_ == sum(sector) & 0xffff
+            c.sendall(b'\x00' if ok else b'\xf3')
+            log.write('readex %d %s\n' % (lsn, 'ok' if ok else 'bad checksum'))
+        log.flush()
+except (EOFError, OSError):
+    log.write('closed\n')
+EOF
+    server=$!
+    sleep 1
+    (cd "$OUT/fujinet" && printf '220 shot dw.ppm\n221 peek FNOK 4\n222 quit\n' | \
+        BMCOCO_REFRESH=60 BMCOCO_IP=127.0.0.1 \
+        BMCOCO_CMDLINE="root=. machine=coco2bus webui=0 becker_ip=127.0.0.1 becker_port=65512" "$SIM" > log.txt 2>&1)
+    kill $server 2>/dev/null
+    wait $server 2>/dev/null
+    if grep -q "ready" "$OUT/fujinet/server.log" && grep -q "fuji 52" "$OUT/fujinet/server.log" \
+       && grep -q "readex 7 ok" "$OUT/fujinet/server.log"; then
+        pass "fujinet: FujiNet's commands and READEX reach the server"
+    else
+        fail fujinet "the server got $(tr '\n' ' ' < "$OUT/fujinet/server.log" 2>/dev/null) (see out/fujinet)"
+    fi
+    check_log fujinet "peek FNOK: 01 00 07 08" "the CoCo got READY, no error and the sector"
+    activity_shown fujinet dw 0 400 200 100000 "the light shows DW0's sector, not FujiNet's bytes as an error"
+
     echo "The built-in DriveWire server"
     # No server address: the Becker port talks to BMCoco's own server,
     # with test.dsk in drive 0 (sector 1 all 7s). BASIC writes to virtual
