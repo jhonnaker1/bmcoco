@@ -301,12 +301,14 @@ static void measure_load(double now)
 
 /* While a floppy disk is read or written: its drive, track, side and
    sector at the bottom left of the picture, by a red light like a real
-   drive's, so that a program stuck loading can be seen to be (the wrong
-   disk, say). An empty drive, a sector that isn't there or a bad one is
-   shown in red for a few seconds. Read once a frame from the disk
-   controller (the WD279x of an RS-DOS, DragonDOS or Delta cartridge, also
-   in a Multi-Pak), so very short reads can be missed, which doesn't
-   matter: a disk being loaded is read for longer. The hard disks and
+   drive's, and whether it is being read, written or the head moved (seek),
+   so that a program stuck loading can be seen to be (the wrong disk, say).
+   An empty drive, a sector that isn't there or a bad one is shown in red
+   for a few seconds. The disk controller (the WD279x of an RS-DOS,
+   DragonDOS or Delta cartridge, also in a Multi-Pak) tells the user
+   interface each time it starts or stops reading, writing or seeking
+   (XRoar's ui_tag_fdc_status), so even the shortest read lights it; its
+   registers are also looked at once a frame. The hard disks and
    DriveWire are shown in the same place (activity.c), whichever of them
    was busy last. The disk_activity option (Disk Drives, Show Disk
    Activity) turns it off. */
@@ -321,6 +323,11 @@ static uint8_t da_track, da_sector;
 static double da_lit_until, da_shown_until, da_error_until;
 static double da_last;                /* when the floppy was last busy */
 static const char *da_error;
+static const char *da_doing;          /* "read", "write", "seek" or NULL */
+/* Where the error was, and what was being done there: shown with it. */
+static const char *da_error_doing;
+static struct vdrive_info da_error_drive;
+static unsigned da_error_sector;
 
 static void da_drive_info(void *sptr, int tag, void *smsg)
 {
@@ -331,6 +338,24 @@ static void da_drive_info(void *sptr, int tag, void *smsg)
 		da_drive = *(const struct vdrive_info *) msg->data;
 }
 
+/* The controller started or stopped reading, writing or seeking. */
+static void da_fdc_status(void *sptr, int tag, void *smsg)
+{
+	struct ui_state_message *msg = smsg;
+	const struct wd279x_status *st = msg->data;
+	double now;
+	(void) sptr;
+	(void) tag;
+	if (st == NULL || st->active == WD279X_ACTIVITY_IDLE)
+		return;
+	da_doing = st->active == WD279X_ACTIVITY_READ ? "read"
+	           : st->active == WD279X_ACTIVITY_WRITE ? "write" : "seek";
+	now = host_time();
+	da_lit_until = now + 0.25;
+	da_shown_until = now + 2.0;
+	da_last = now;
+}
+
 static void disk_activity_attach(void)
 {
 	int client = messenger_client_register();
@@ -338,6 +363,8 @@ static void disk_activity_attach(void)
 	activity_set_enabled(da_enabled);
 	ui_messenger_join_group(client, ui_tag_disk_drive_info,
 	                        MESSENGER_NOTIFY_DELEGATE(da_drive_info, NULL));
+	ui_messenger_join_group(client, ui_tag_fdc_status,
+	                        MESSENGER_NOTIFY_DELEGATE(da_fdc_status, NULL));
 }
 
 /* The controller's interrupt, which it raises when a command is done: in
@@ -358,6 +385,9 @@ static void da_set_intrq(void *sptr, bool value)
 			error = "CRC error";
 		if (error != NULL) {
 			da_error = error;
+			da_error_doing = da_doing;
+			da_error_drive = da_drive;
+			da_error_sector = fdc->sector_register;
 			da_error_until = host_time() + 3.0;
 		}
 	}
@@ -392,6 +422,9 @@ static struct WD279X *find_fdc(void)
 static int floppy_line(double now, char *text, unsigned size, int *lit, int *error)
 {
 	struct WD279X *fdc;
+	const struct vdrive_info *drive;
+	const char *doing;
+	unsigned sector;
 	int busy, active;
 	fdc = find_fdc();
 	if (fdc == NULL) {
@@ -406,6 +439,7 @@ static int floppy_line(double now, char *text, unsigned size, int *lit, int *err
 		da_commands_seen = da_commands;
 		da_track = fdc->track_register;
 		da_sector = fdc->sector_register;
+		da_doing = NULL;
 		return 0;
 	}
 	busy = (fdc->status_register & 0x01) != 0;
@@ -419,6 +453,9 @@ static int floppy_line(double now, char *text, unsigned size, int *lit, int *err
 		/* No disk to turn: the controller waits for ever (or until
 		   the DOS gives up). */
 		da_error = "no disk";
+		da_error_doing = da_doing;
+		da_error_drive = da_drive;
+		da_error_sector = fdc->sector_register;
 		da_error_until = now + 3.0;
 	}
 	if (active) {
@@ -434,8 +471,20 @@ static int floppy_line(double now, char *text, unsigned size, int *lit, int *err
 	}
 	if (now > da_shown_until)
 		return 0;
-	snprintf(text, size, "D%u T%02u H%u S%02u%s%s", da_drive.drive,
-	         da_drive.cylinder, da_drive.head, (unsigned) fdc->sector_register,
+	/* An error, while it is shown, with where it was and what failed
+	   there (a read, say), rather than what the DOS did next (moving the
+	   head back to try again). */
+	if (da_error != NULL) {
+		drive = &da_error_drive;
+		sector = da_error_sector;
+		doing = da_error_doing;
+	} else {
+		drive = &da_drive;
+		sector = fdc->sector_register;
+		doing = da_doing;
+	}
+	snprintf(text, size, "D%u T%02u H%u S%02u%s%s%s%s", drive->drive, drive->cylinder,
+	         drive->head, sector, doing ? " " : "", doing ? doing : "",
 	         da_error ? " " : "", da_error ? da_error : "");
 	*lit = now <= da_lit_until;
 	*error = da_error != NULL;

@@ -11,6 +11,12 @@
   a disk read, and its "error" shown in red. After a command that isn't
   DriveWire's, the light now waits for the server's answer before reading
   commands again
+- The floppy disk line says what the drive is doing: `read`, `write` or
+  `seek`, as in `D0 T17 H0 S03 read`, from XRoar 1.13.1's reports of the
+  disk controller, which also light it for reads too short for the once a
+  frame look. An error is shown with the track and sector where it
+  happened and what failed there (`D0 T34 H0 S01 read not found`), not
+  where the DOS moved the head next to try again
 - Tests: a stand-in FujiNet: its commands and a READEX reach it, and the
   light shows the sector read with no error. The Color BASIC test with real
   ROMs looks for XRoar 1.13.1's log line (1.12.1's is gone)

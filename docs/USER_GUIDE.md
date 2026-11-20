@@ -545,13 +545,17 @@ controller, say), that the network is on, and the BBS's address and port:
 means nothing answered there.
 
 **A program seems stuck loading**: watch the bottom left of the screen.
-While a floppy disk is read, a red light shows there with the drive (D),
-track (T), side (H) and sector (S), as in `D0 T17 H0 S03`. A light that
-stays on with the track and sector not moving, or a red message (`no disk`:
-the drive is empty; `not found` or `CRC error`: a sector the program wants
-isn't on the disk, or is damaged; `seek error`), usually means the wrong
-disk is in the drive or the disk image is bad. Many DOSes retry for ever
-rather than give up.
+While a floppy disk is used, a red light shows there with the drive (D),
+track (T), side (H) and sector (S), and what the drive is doing: `read`,
+`write`, or `seek` (moving the head to another track), as in
+`D0 T17 H0 S03 read`. A light that stays on with the track and sector not
+moving, or a red message (`no disk`: the drive is empty; `not found` or
+`CRC error`: a sector the program wants isn't on the disk, or is damaged;
+`seek error`), usually means the wrong disk is in the drive or the disk
+image is bad. A red message gives the track and sector where it happened
+and what failed there (`D0 T34 H0 S01 read not found`), even while the DOS
+moves the head to try again. Many DOSes retry for ever rather than give
+up.
 
 Hard disks and DriveWire drives are shown there the same way, whichever
 was busy last:
